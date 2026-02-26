@@ -530,7 +530,7 @@ export default function Home() {
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                 aria-label="並び替え"
               >
-                <option value="default">デフォルト</option>
+                <option value="default">おすすめ順</option>
                 <option value="createdDesc">投稿日が新しい順</option>
                 <option value="createdAsc">投稿日が古い順</option>
                 <option value="updatedDesc">編集日が新しい順</option>
@@ -541,7 +541,7 @@ export default function Home() {
                   <SelectValue placeholder="並び替え" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">デフォルト</SelectItem>
+                  <SelectItem value="default">おすすめ順</SelectItem>
                   <SelectItem value="createdDesc">投稿日が新しい順</SelectItem>
                   <SelectItem value="createdAsc">投稿日が古い順</SelectItem>
                   <SelectItem value="updatedDesc">編集日が新しい順</SelectItem>
