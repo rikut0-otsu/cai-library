@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Share2, Sun, User } from "lucide-react";
+import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Share2, Sparkles, Sun, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AddCaseModal } from "@/components/AddCaseModal";
@@ -121,9 +121,6 @@ export default function Home() {
     ? `${sharePayload.authorName}さんが「${sharePayload.title}」をCAILIBRARYに追加しました！あなたもログインしてチェックしよう！`
     : "";
   const shareText = sharePayload ? `${shareMessage}\n${shareUrl}` : "";
-  const slackText = sharePayload
-    ? `*${sharePayload.authorName}さんが「${sharePayload.title}」をCAILIBRARYに追加しました！*\nあなたもログインしてチェックしよう！\n${shareUrl}`
-    : "";
 
   const filteredCases = useMemo(() => {
     const filtered = cases.filter((c) => {
@@ -304,11 +301,6 @@ export default function Home() {
       console.error(error);
       toast.error("共有に失敗しました");
     }
-  };
-  const handleOpenXShare = () => {
-    if (!shareText) return;
-    const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-    window.open(xUrl, "_blank", "noopener,noreferrer");
   };
   const handlePinCase = async (caseId: number) => {
     if (!isAuthenticated) {
@@ -727,12 +719,6 @@ export default function Home() {
               <Button variant="outline" onClick={() => handleCopyText(shareText, "紹介文をコピーしました")}>
                 紹介文をコピー
               </Button>
-              <Button variant="outline" onClick={() => handleCopyText(slackText, "Slack向け文面をコピーしました")}>
-                Slack向けコピー
-              </Button>
-              <Button variant="outline" onClick={handleOpenXShare}>
-                Xで共有
-              </Button>
               {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
                 <Button className="sm:col-span-2" variant="secondary" onClick={handleNativeShare}>
                   端末の共有機能を使う
@@ -746,13 +732,16 @@ export default function Home() {
       <Dialog open={isCelebrationModalOpen} onOpenChange={setIsCelebrationModalOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>事例の投稿ありがとうございます！</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Sparkles className="w-5 h-5 text-yellow-500" />
+              <span>🎉 事例の投稿ありがとうございます！ 🎉</span>
+            </DialogTitle>
             <DialogDescription>
-              投稿した事例をすぐにシェアして、チームに広めましょう。
+              すばらしい投稿です！この勢いでシェアして、チームに広めましょう。
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="rounded-lg border bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 p-3">
               <p className="text-sm font-medium break-words">{celebrationPayload?.title}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
