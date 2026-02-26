@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Copy, ExternalLink, Heart, Pencil, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Heart, Pencil, Pin, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface CaseDetailModalProps {
@@ -20,6 +20,8 @@ interface CaseDetailModalProps {
   onAuthorClick: (userId: number) => void;
   canEdit: boolean;
   canDelete: boolean;
+  canPin: boolean;
+  onPin: (id: number) => void;
 }
 
 export function CaseDetailModal({
@@ -31,6 +33,8 @@ export function CaseDetailModal({
   onAuthorClick,
   canEdit,
   canDelete,
+  canPin,
+  onPin,
 }: CaseDetailModalProps) {
 
   if (!caseStudy) {
@@ -55,6 +59,9 @@ export function CaseDetailModal({
 
   const handleEditClick = () => {
     onEdit(caseStudy.id);
+  };
+  const handlePinClick = () => {
+    onPin(caseStudy.id);
   };
 
   const isEdited =
@@ -147,6 +154,16 @@ export function CaseDetailModal({
                   aria-label="Delete case study"
                 >
                   <Trash2 className="w-5 h-5" />
+                </Button>
+              )}
+              {canPin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handlePinClick}
+                  aria-label="Pin case study to top"
+                >
+                  <Pin className="w-5 h-5" />
                 </Button>
               )}
             </div>

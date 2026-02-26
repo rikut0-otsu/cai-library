@@ -9,6 +9,7 @@ import { invokeLLM } from "./_core/llm";
 import { ENV } from "./_core/env";
 
 const INVITE_CODE_SETTING_KEY = "auth.inviteCode";
+const PINNED_CASE_STUDY_ID_SETTING_KEY = "caseStudies.pinnedCaseStudyId";
 
 const decodeBase64 = (input: string) => {
   if (typeof atob === "function") {
@@ -32,7 +33,13 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      if (!opts.ctx.user) return null;
+      return {
+        ...opts.ctx.user,
+        isOwner: opts.ctx.user.openId === ENV.ownerOpenId,
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -227,6 +234,9 @@ export const appRouter = router({
     // 全事例一覧取得(公開)
     list: publicProcedure.query(async ({ ctx }) => {
       const cases = await db.getAllCaseStudies();
+      const pinnedCaseStudyId = Number(
+        (await db.getAppSetting(PINNED_CASE_STUDY_ID_SETTING_KEY))?.value ?? 0
+      );
       
       // ログイン済みの場合はお気に入り情報も付与
       if (ctx.user) {
@@ -239,6 +249,7 @@ export const appRouter = router({
           steps: JSON.parse(c.steps),
           tags: JSON.parse(c.tags),
           isFavorite: favoriteIds.has(c.id),
+          isPinned: c.id === pinnedCaseStudyId,
           authorName: c.authorName ?? "不明",
           authorRole: c.authorRole ?? "user",
           authorIsOwner: Boolean(c.authorIsOwner),
@@ -251,6 +262,7 @@ export const appRouter = router({
         steps: JSON.parse(c.steps),
         tags: JSON.parse(c.tags),
         isFavorite: false,
+        isPinned: c.id === pinnedCaseStudyId,
         authorName: c.authorName ?? "不明",
         authorRole: c.authorRole ?? "user",
         authorIsOwner: Boolean(c.authorIsOwner),
@@ -414,17 +426,43 @@ export const appRouter = router({
     // お気に入り一覧取得
     getFavorites: protectedProcedure.query(async ({ ctx }) => {
       const favorites = await db.getUserFavorites(ctx.user.id);
+      const pinnedCaseStudyId = Number(
+        (await db.getAppSetting(PINNED_CASE_STUDY_ID_SETTING_KEY))?.value ?? 0
+      );
       return favorites.map(f => ({
         ...f.caseStudy,
         tools: JSON.parse(f.caseStudy.tools),
         steps: JSON.parse(f.caseStudy.steps),
         tags: JSON.parse(f.caseStudy.tags),
         isFavorite: true,
+        isPinned: f.caseStudy.id === pinnedCaseStudyId,
         authorName: f.authorName ?? "不明",
         authorRole: f.authorRole ?? "user",
         authorIsOwner: Boolean(f.authorIsOwner),
       }));
     }),
+
+    pinToTop: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.openId !== ENV.ownerOpenId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only owner can pin case studies.",
+          });
+        }
+
+        const caseStudy = await db.getCaseStudyById(input.id);
+        if (!caseStudy) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Case study not found.",
+          });
+        }
+
+        await db.setAppSetting(PINNED_CASE_STUDY_ID_SETTING_KEY, String(input.id));
+        return { success: true } as const;
+      }),
 
     // delete case study
     delete: protectedProcedure
@@ -438,6 +476,12 @@ export const appRouter = router({
         }
 
         await db.deleteCaseStudy(input.id);
+        const pinnedCaseStudyId = Number(
+          (await db.getAppSetting(PINNED_CASE_STUDY_ID_SETTING_KEY))?.value ?? 0
+        );
+        if (pinnedCaseStudyId === input.id) {
+          await db.setAppSetting(PINNED_CASE_STUDY_ID_SETTING_KEY, null);
+        }
         return { success: true };
       }),
 

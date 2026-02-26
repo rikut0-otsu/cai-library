@@ -72,6 +72,9 @@ export default function Home() {
   const toggleFavoriteMutation = trpc.caseStudies.toggleFavorite.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
   });
+  const pinToTopMutation = trpc.caseStudies.pinToTop.useMutation({
+    onSuccess: () => utils.caseStudies.list.invalidate(),
+  });
   const deleteMutation = trpc.caseStudies.delete.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
   });
@@ -90,6 +93,7 @@ export default function Home() {
     Boolean(selectedCase) &&
     Boolean(user) &&
     (selectedCase?.userId === user?.id || user?.role === "admin");
+  const canPinSelected = Boolean(selectedCase) && Boolean(user?.isOwner);
 
   const filteredCases = useMemo(() => {
     const filtered = cases.filter((c) => {
@@ -103,6 +107,9 @@ export default function Home() {
     });
 
     return filtered.sort((a, b) => {
+      if (a.isPinned !== b.isPinned) {
+        return a.isPinned ? -1 : 1;
+      }
       if (sortOption === "default") {
         const getPriority = (item: CaseStudy) => {
           if (item.authorIsOwner) return 2;
@@ -203,6 +210,20 @@ export default function Home() {
   const handleEditCase = (caseId: number) => {
     setSelectedCaseId(null);
     setEditingCaseId(caseId);
+  };
+  const handlePinCase = async (caseId: number) => {
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+    if (!user?.isOwner) return;
+    try {
+      await pinToTopMutation.mutateAsync({ id: caseId });
+      toast.success("事例を最上部に固定しました");
+    } catch (error) {
+      console.error(error);
+      toast.error("固定に失敗しました");
+    }
   };
 
   const handleAuthorClick = (e: React.MouseEvent, userId: number) => {
@@ -492,9 +513,11 @@ export default function Home() {
           onFavoriteToggle={handleFavoriteToggle}
           onEdit={handleEditCase}
           onDelete={handleDeleteCase}
+          onPin={handlePinCase}
           onAuthorClick={(userId) => setProfileUserId(userId)}
           canEdit={canEditSelected}
           canDelete={canDeleteSelected}
+          canPin={canPinSelected}
         />
       )}
 
