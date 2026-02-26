@@ -383,19 +383,19 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
+        <div className="container py-3 md:py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2 md:justify-start">
               <img
                 src="/logo.png"
                 alt="CAI Library logo"
-                className="w-50 h-20 rounded-xl object-cover"
+                className="w-40 h-14 rounded-xl object-cover md:w-50 md:h-20"
               />
             </div>
 
             {/* Search Bar */}
-            <div className="flex-1 max-w-xl mx-8">
+            <div className="w-full md:flex-1 md:max-w-xl md:mx-8">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
@@ -403,15 +403,15 @@ export default function Home() {
                   placeholder="検索する"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-muted border-border rounded-full"
+                  className="w-full pl-12 pr-4 py-2.5 md:py-3 bg-muted border-border rounded-full"
                 />
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3">
+            <div className="w-full md:w-auto flex items-center gap-2 overflow-x-auto pb-1 md:overflow-visible md:pb-0">
               {switchable && (
-                <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-2">
+                <div className="shrink-0 flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-2">
                   <Sun
                     className={`w-4 h-4 ${
                       theme === "light" ? "text-foreground" : "text-muted-foreground"
@@ -439,13 +439,13 @@ export default function Home() {
 
               {user?.role === "admin" && (
                 <Link href="/admin">
-                  <Button variant="outline" className="rounded-full">
+                  <Button variant="outline" className="rounded-full shrink-0">
                     <span className="text-sm">管理者ページ</span>
                   </Button>
                 </Link>
               )}
               {isAuthenticated && user?.role !== "admin" && (
-                <Button onClick={handleOpenInquiry} variant="outline" className="rounded-full">
+                <Button onClick={handleOpenInquiry} variant="outline" className="rounded-full shrink-0">
                   <span className="text-sm">問い合わせ</span>
                 </Button>
               )}
@@ -454,7 +454,7 @@ export default function Home() {
                 <Button
                   onClick={handleLoginClick}
                   variant="outline"
-                  className="flex items-center gap-2 rounded-full"
+                  className="flex items-center gap-2 rounded-full shrink-0"
                 >
                   <span className="text-sm">Googleでログイン</span>
                 </Button>
@@ -464,7 +464,7 @@ export default function Home() {
                     <Button
                       onClick={handleAddClick}
                       variant="outline"
-                      className="flex items-center gap-2 rounded-full"
+                      className="flex items-center gap-2 rounded-full shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       <span className="text-sm">事例を追加</span>
@@ -472,7 +472,7 @@ export default function Home() {
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="flex items-center gap-2 rounded-full">
+                      <Button variant="outline" className="flex items-center gap-2 rounded-full shrink-0">
                         <span className="text-sm">アカウント管理</span>
                         <ChevronDown className="w-4 h-4" />
                       </Button>
@@ -499,7 +499,7 @@ export default function Home() {
           </div>
 
           {/* Category Tabs */}
-          <div className="mt-6 flex items-center gap-3">
+          <div className="mt-4 md:mt-6 flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex-1 overflow-x-auto scrollbar-hide pb-1">
               <div className="flex items-center gap-3">
                 {categories.map((category) => {
@@ -522,7 +522,7 @@ export default function Home() {
               </div>
             </div>
             <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full md:w-64">
                 <SelectValue placeholder="並び替え" />
               </SelectTrigger>
               <SelectContent>
@@ -537,13 +537,13 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="container py-12">
+      <main className="container py-6 md:py-12">
         {listQuery.isLoading ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground text-lg">読み込み中...</p>
           </div>
         ) : filteredCases.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             {filteredCases.map((caseStudy) => {
               const isEdited =
                 typeof caseStudy.updatedAt === "number" &&
@@ -555,7 +555,7 @@ export default function Home() {
                   onClick={() => openCaseDetail(caseStudy.id)}
                 >
                   {caseStudy.thumbnailUrl && (
-                    <div className="relative w-full h-64 overflow-hidden rounded-t-lg">
+                    <div className="relative w-full h-52 md:h-64 overflow-hidden rounded-t-lg">
                       <img
                         src={caseStudy.thumbnailUrl}
                         alt={caseStudy.title}
@@ -566,10 +566,10 @@ export default function Home() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <CardTitle className="text-xl">{caseStudy.title}</CardTitle>
+                        <CardTitle className="text-lg md:text-xl">{caseStudy.title}</CardTitle>
                         {isEdited && <Badge variant="outline">編集済み</Badge>}
                       </div>
-                      <div className="flex items-center">
+                      <div className="flex items-center shrink-0">
                         {user?.loginMethod === "google" && caseStudy.userId === user?.id && (
                           <Button
                             variant="ghost"
