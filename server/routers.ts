@@ -249,6 +249,22 @@ export const appRouter = router({
           await db.updateInquiryStatus(input.id, input.isResolved);
           return { success: true } as const;
         }),
+      delete: adminProcedure
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+          })
+        )
+        .mutation(async ({ input, ctx }) => {
+          if (ctx.user.openId !== ENV.ownerOpenId) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Only owner can delete inquiries.",
+            });
+          }
+          await db.deleteInquiryById(input.id);
+          return { success: true } as const;
+        }),
     }),
   }),
   inquiries: router({

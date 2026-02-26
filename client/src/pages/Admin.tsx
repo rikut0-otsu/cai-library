@@ -64,6 +64,11 @@ export default function Admin() {
       utils.admin.inquiries.list.invalidate();
     },
   });
+  const deleteInquiryMutation = trpc.admin.inquiries.delete.useMutation({
+    onSuccess: () => {
+      utils.admin.inquiries.list.invalidate();
+    },
+  });
 
   const users = usersQuery.data ?? [];
 
@@ -162,6 +167,21 @@ export default function Admin() {
     } catch (error) {
       console.error(error);
       toast.error("問い合わせ状態の更新に失敗しました");
+    } finally {
+      setPendingInquiryId(null);
+    }
+  };
+  const handleDeleteInquiry = async (id: number, title: string) => {
+    if (!user?.isOwner) return;
+    const confirmed = window.confirm(`問い合わせ「${title}」を削除します。よろしいですか？`);
+    if (!confirmed) return;
+    try {
+      setPendingInquiryId(id);
+      await deleteInquiryMutation.mutateAsync({ id });
+      toast.success("問い合わせを削除しました");
+    } catch (error) {
+      console.error(error);
+      toast.error("問い合わせ削除に失敗しました");
     } finally {
       setPendingInquiryId(null);
     }
@@ -320,6 +340,18 @@ export default function Admin() {
                     送信者: {item.userName || "不明"} {item.userEmail ? `(${item.userEmail})` : ""}
                   </p>
                   <p className="text-sm whitespace-pre-wrap break-words">{item.content}</p>
+                  {user?.isOwner && (
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={pendingInquiryId === item.id}
+                        onClick={() => handleDeleteInquiry(item.id, item.title)}
+                      >
+                        問い合わせを削除
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
               {inquiryTotalPages > 1 && (

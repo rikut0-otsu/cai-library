@@ -534,6 +534,16 @@ export async function updateInquiryStatus(id: number, isResolved: boolean) {
   return true;
 }
 
+export async function deleteInquiryById(id: number) {
+  const db = await getDb();
+  if (!db) return false;
+
+  await ensureInquiriesTable();
+
+  await db.delete(inquiries).where(eq(inquiries.id, id));
+  return true;
+}
+
 async function ensureInquiriesTable() {
   const db = await getDb();
   if (!db) return;
