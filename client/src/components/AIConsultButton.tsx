@@ -58,7 +58,7 @@ export function AIConsultButton({
   }, [iconNormal, iconHeart]);
 
   const rootClassName = [
-    "flex items-center gap-2 px-5 py-2.5 text-foreground hover:bg-muted rounded-full transition-colors",
+    "flex shrink-0 items-center gap-2 px-5 py-2.5 text-foreground hover:bg-muted rounded-full transition-colors whitespace-nowrap",
     className ?? "",
   ]
     .join(" ")
@@ -110,7 +110,7 @@ export function AIConsultButton({
       onPointerLeave={() => setHovered(false)}
     >
       {iconNode}
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium whitespace-nowrap">{label}</span>
     </a>
   );
 }

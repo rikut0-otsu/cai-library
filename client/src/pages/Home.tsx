@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useIsMobile } from "@/hooks/useMobile";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -69,6 +70,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { isAuthenticated, user, logout } = useAuth();
+  const isMobile = useIsMobile();
   const canPost = isAuthenticated && user?.loginMethod === "google";
   const listQuery = trpc.caseStudies.list.useQuery(undefined, {
     refetchOnWindowFocus: false,
@@ -521,17 +523,31 @@ export default function Home() {
                 })}
               </div>
             </div>
-            <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-              <SelectTrigger className="w-full md:w-64">
-                <SelectValue placeholder="並び替え" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">デフォルト</SelectItem>
-                <SelectItem value="createdDesc">投稿日が新しい順</SelectItem>
-                <SelectItem value="createdAsc">投稿日が古い順</SelectItem>
-                <SelectItem value="updatedDesc">編集日が新しい順</SelectItem>
-              </SelectContent>
-            </Select>
+            {isMobile ? (
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                aria-label="並び替え"
+              >
+                <option value="default">デフォルト</option>
+                <option value="createdDesc">投稿日が新しい順</option>
+                <option value="createdAsc">投稿日が古い順</option>
+                <option value="updatedDesc">編集日が新しい順</option>
+              </select>
+            ) : (
+              <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+                <SelectTrigger className="w-full md:w-64">
+                  <SelectValue placeholder="並び替え" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">デフォルト</SelectItem>
+                  <SelectItem value="createdDesc">投稿日が新しい順</SelectItem>
+                  <SelectItem value="createdAsc">投稿日が古い順</SelectItem>
+                  <SelectItem value="updatedDesc">編集日が新しい順</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </header>
