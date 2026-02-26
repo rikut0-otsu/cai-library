@@ -33,6 +33,10 @@ export default function Admin() {
     enabled: isAuthenticated && isAdmin,
     refetchOnWindowFocus: false,
   });
+  const inquiriesQuery = trpc.admin.inquiries.list.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin,
+    refetchOnWindowFocus: false,
+  });
   const setInviteCodeMutation = trpc.admin.settings.setInviteCode.useMutation({
     onSuccess: () => {
       utils.admin.settings.getInviteCode.invalidate();
@@ -220,6 +224,37 @@ export default function Admin() {
               コピー
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>問い合わせ一覧</CardTitle>
+          <CardDescription>一般ユーザーから送られた報告内容を確認できます。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {inquiriesQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">問い合わせを取得中...</p>
+          ) : (inquiriesQuery.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">問い合わせはありません。</p>
+          ) : (
+            <div className="space-y-3">
+              {(inquiriesQuery.data ?? []).map((item) => (
+                <div key={item.id} className="rounded-lg border border-border p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium break-all">{item.title}</p>
+                    <Badge variant="outline">
+                      {new Date(item.createdAt).toLocaleString("ja-JP")}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground break-all">
+                    送信者: {item.userName || "不明"} {item.userEmail ? `(${item.userEmail})` : ""}
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{item.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

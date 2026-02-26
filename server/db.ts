@@ -2,8 +2,10 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import {
   appSettings,
+  inquiries,
   InsertCaseStudy,
   InsertAppSetting,
+  InsertInquiry,
   InsertUserProfile,
   InsertUser,
   caseStudies,
@@ -480,5 +482,52 @@ export async function setAppSetting(key: string, value: string | null) {
   });
 
   return true;
+}
+
+export async function createInquiry(data: InsertInquiry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id integer primary key autoincrement,
+      user_id integer not null references users(id) on delete cascade,
+      title text not null,
+      content text not null,
+      created_at integer not null default (unixepoch() * 1000)
+    )
+  `);
+
+  await db.insert(inquiries).values(data);
+  return true;
+}
+
+export async function getAllInquiries() {
+  const db = await getDb();
+  if (!db) return [];
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id integer primary key autoincrement,
+      user_id integer not null references users(id) on delete cascade,
+      title text not null,
+      content text not null,
+      created_at integer not null default (unixepoch() * 1000)
+    )
+  `);
+
+  return db
+    .select({
+      id: inquiries.id,
+      userId: inquiries.userId,
+      title: inquiries.title,
+      content: inquiries.content,
+      createdAt: inquiries.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+    })
+    .from(inquiries)
+    .leftJoin(users, eq(inquiries.userId, users.id))
+    .orderBy(desc(inquiries.createdAt));
 }
 

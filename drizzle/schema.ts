@@ -123,3 +123,19 @@ export const appSettings = sqliteTable("app_settings", {
 
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertAppSetting = typeof appSettings.$inferInsert;
+
+/**
+ * User inquiry reports sent to admins.
+ */
+export const inquiries = sqliteTable("inquiries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: integer("created_at").notNull().default(nowMs),
+});
+
+export type Inquiry = typeof inquiries.$inferSelect;
+export type InsertInquiry = typeof inquiries.$inferInsert;

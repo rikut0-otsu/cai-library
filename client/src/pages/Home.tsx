@@ -3,6 +3,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Sun, User } from "lucide-react";
@@ -30,6 +31,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Category =
   | "all"
@@ -68,6 +76,9 @@ export default function Home() {
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCaseId, setEditingCaseId] = useState<number | null>(null);
+  const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
+  const [inquiryTitle, setInquiryTitle] = useState("");
+  const [inquiryContent, setInquiryContent] = useState("");
   const { theme, toggleTheme, switchable } = useTheme();
   const toggleFavoriteMutation = trpc.caseStudies.toggleFavorite.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
@@ -78,6 +89,7 @@ export default function Home() {
   const deleteMutation = trpc.caseStudies.delete.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
   });
+  const submitInquiryMutation = trpc.inquiries.submit.useMutation();
   const selectedCase = selectedCaseId
     ? cases.find((item) => item.id === selectedCaseId) ?? null
     : null;
@@ -253,6 +265,31 @@ export default function Home() {
       window.location.href = getLoginUrl({ selectAccount: true });
     }
   };
+  const handleOpenInquiry = () => {
+    if (!isAuthenticated) {
+      window.location.href = getLoginUrl();
+      return;
+    }
+    setInquiryTitle("");
+    setInquiryContent("");
+    setIsInquiryModalOpen(true);
+  };
+  const handleSubmitInquiry = async () => {
+    const title = inquiryTitle.trim();
+    const content = inquiryContent.trim();
+    if (!title || !content) {
+      toast.error("件名と内容を入力してください");
+      return;
+    }
+    try {
+      await submitInquiryMutation.mutateAsync({ title, content });
+      toast.success("問い合わせを送信しました");
+      setIsInquiryModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("問い合わせ送信に失敗しました");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -318,6 +355,11 @@ export default function Home() {
                     <span className="text-sm">管理者ページ</span>
                   </Button>
                 </Link>
+              )}
+              {isAuthenticated && user?.role !== "admin" && (
+                <Button onClick={handleOpenInquiry} variant="outline" className="rounded-full">
+                  <span className="text-sm">問い合わせ</span>
+                </Button>
               )}
 
               {!isAuthenticated ? (
@@ -548,6 +590,44 @@ export default function Home() {
           }}
         />
       )}
+
+      <Dialog open={isInquiryModalOpen} onOpenChange={setIsInquiryModalOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>管理者へ問い合わせ</DialogTitle>
+            <DialogDescription>
+              問題報告や改善要望を送信できます。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={inquiryTitle}
+              onChange={(event) => setInquiryTitle(event.target.value)}
+              placeholder="件名"
+              maxLength={120}
+            />
+            <Textarea
+              value={inquiryContent}
+              onChange={(event) => setInquiryContent(event.target.value)}
+              placeholder="内容"
+              rows={8}
+              maxLength={3000}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsInquiryModalOpen(false)}
+                disabled={submitInquiryMutation.isPending}
+              >
+                キャンセル
+              </Button>
+              <Button onClick={handleSubmitInquiry} disabled={submitInquiryMutation.isPending}>
+                送信
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

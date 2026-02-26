@@ -229,6 +229,33 @@ export const appRouter = router({
           return { success: true } as const;
         }),
     }),
+    inquiries: router({
+      list: adminProcedure.query(async () => {
+        const items = await db.getAllInquiries();
+        return items.map(item => ({
+          ...item,
+          userName: item.userName ?? "不明",
+          userEmail: item.userEmail ?? "",
+        }));
+      }),
+    }),
+  }),
+  inquiries: router({
+    submit: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().trim().min(1).max(120),
+          content: z.string().trim().min(1).max(3000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        await db.createInquiry({
+          userId: ctx.user.id,
+          title: input.title.trim(),
+          content: input.content.trim(),
+        });
+        return { success: true } as const;
+      }),
   }),
   caseStudies: router({
     // 全事例一覧取得(公開)
