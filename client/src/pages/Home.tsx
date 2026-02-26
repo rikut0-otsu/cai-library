@@ -120,7 +120,7 @@ export default function Home() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = sharePayload ? `${origin}/?caseId=${sharePayload.id}` : "";
   const shareMessage = sharePayload
-    ? `${sharePayload.authorName}さんが「${sharePayload.title}」をCAILIBRARYに追加しました！あなたもログインしてチェックしよう！`
+    ? `${sharePayload.authorName}さんが「${sharePayload.title}」をCAI LIBRARYに追加しました！あなたもログインしてチェックしよう！`
     : "";
   const shareText = sharePayload ? `${shareMessage}\n${shareUrl}` : "";
 
