@@ -238,6 +238,17 @@ export const appRouter = router({
           userEmail: item.userEmail ?? "",
         }));
       }),
+      updateStatus: adminProcedure
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            isResolved: z.boolean(),
+          })
+        )
+        .mutation(async ({ input }) => {
+          await db.updateInquiryStatus(input.id, input.isResolved);
+          return { success: true } as const;
+        }),
     }),
   }),
   inquiries: router({

@@ -134,6 +134,8 @@ export const inquiries = sqliteTable("inquiries", {
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content").notNull(),
+  isResolved: integer("is_resolved").notNull().default(0),
+  resolvedAt: integer("resolved_at"),
   createdAt: integer("created_at").notNull().default(nowMs),
 });
 

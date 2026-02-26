@@ -488,15 +488,7 @@ export async function createInquiry(data: InsertInquiry) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS inquiries (
-      id integer primary key autoincrement,
-      user_id integer not null references users(id) on delete cascade,
-      title text not null,
-      content text not null,
-      created_at integer not null default (unixepoch() * 1000)
-    )
-  `);
+  await ensureInquiriesTable();
 
   await db.insert(inquiries).values(data);
   return true;
@@ -506,15 +498,7 @@ export async function getAllInquiries() {
   const db = await getDb();
   if (!db) return [];
 
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS inquiries (
-      id integer primary key autoincrement,
-      user_id integer not null references users(id) on delete cascade,
-      title text not null,
-      content text not null,
-      created_at integer not null default (unixepoch() * 1000)
-    )
-  `);
+  await ensureInquiriesTable();
 
   return db
     .select({
@@ -522,6 +506,8 @@ export async function getAllInquiries() {
       userId: inquiries.userId,
       title: inquiries.title,
       content: inquiries.content,
+      isResolved: inquiries.isResolved,
+      resolvedAt: inquiries.resolvedAt,
       createdAt: inquiries.createdAt,
       userName: users.name,
       userEmail: users.email,
@@ -531,3 +517,43 @@ export async function getAllInquiries() {
     .orderBy(desc(inquiries.createdAt));
 }
 
+export async function updateInquiryStatus(id: number, isResolved: boolean) {
+  const db = await getDb();
+  if (!db) return false;
+
+  await ensureInquiriesTable();
+
+  await db
+    .update(inquiries)
+    .set({
+      isResolved: isResolved ? 1 : 0,
+      resolvedAt: isResolved ? Date.now() : null,
+    })
+    .where(eq(inquiries.id, id));
+
+  return true;
+}
+
+async function ensureInquiriesTable() {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id integer primary key autoincrement,
+      user_id integer not null references users(id) on delete cascade,
+      title text not null,
+      content text not null,
+      is_resolved integer not null default 0,
+      resolved_at integer,
+      created_at integer not null default (unixepoch() * 1000)
+    )
+  `);
+
+  try {
+    await db.run(sql`ALTER TABLE inquiries ADD COLUMN is_resolved integer not null default 0`);
+  } catch {}
+  try {
+    await db.run(sql`ALTER TABLE inquiries ADD COLUMN resolved_at integer`);
+  } catch {}
+}

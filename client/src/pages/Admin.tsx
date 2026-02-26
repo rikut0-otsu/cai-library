@@ -12,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 type Role = "user" | "admin";
@@ -23,6 +25,9 @@ export default function Admin() {
   const [inviteCode, setInviteCode] = useState("");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingDeleteUserId, setPendingDeleteUserId] = useState<number | null>(null);
+  const [inquiryTab, setInquiryTab] = useState<"open" | "resolved">("open");
+  const [inquiryPage, setInquiryPage] = useState(1);
+  const [pendingInquiryId, setPendingInquiryId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const usersQuery = trpc.admin.users.list.useQuery(undefined, {
@@ -54,14 +59,23 @@ export default function Admin() {
       utils.caseStudies.list.invalidate();
     },
   });
+  const updateInquiryStatusMutation = trpc.admin.inquiries.updateStatus.useMutation({
+    onSuccess: () => {
+      utils.admin.inquiries.list.invalidate();
+    },
+  });
 
   const users = usersQuery.data ?? [];
 
   const currentInviteCode = inviteCodeQuery.data?.inviteCode ?? "";
+  const inquiries = inquiriesQuery.data ?? [];
 
   useEffect(() => {
     setInviteCode(currentInviteCode);
   }, [currentInviteCode]);
+  useEffect(() => {
+    setInquiryPage(1);
+  }, [inquiryTab]);
 
   const filteredUsers = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -78,6 +92,20 @@ export default function Admin() {
       );
     });
   }, [users, search]);
+  const filteredInquiries = useMemo(() => {
+    return inquiries.filter((item) =>
+      inquiryTab === "open" ? item.isResolved !== 1 : item.isResolved === 1
+    );
+  }, [inquiries, inquiryTab]);
+  const inquiryPageSize = 3;
+  const inquiryTotalPages = Math.max(1, Math.ceil(filteredInquiries.length / inquiryPageSize));
+  const pagedInquiries = useMemo(() => {
+    const start = (inquiryPage - 1) * inquiryPageSize;
+    return filteredInquiries.slice(start, start + inquiryPageSize);
+  }, [filteredInquiries, inquiryPage]);
+  useEffect(() => {
+    setInquiryPage((prev) => Math.min(prev, inquiryTotalPages));
+  }, [inquiryTotalPages]);
 
   const handleRoleChange = async (userId: number, role: Role) => {
     try {
@@ -124,6 +152,18 @@ export default function Admin() {
     } catch (error) {
       console.error(error);
       toast.error("招待コードの更新に失敗しました");
+    }
+  };
+  const handleInquiryStatusChange = async (id: number, checked: boolean) => {
+    try {
+      setPendingInquiryId(id);
+      await updateInquiryStatusMutation.mutateAsync({ id, isResolved: checked });
+      toast.success(checked ? "問い合わせを完了にしました" : "問い合わせを確認中に戻しました");
+    } catch (error) {
+      console.error(error);
+      toast.error("問い合わせ状態の更新に失敗しました");
+    } finally {
+      setPendingInquiryId(null);
     }
   };
 
@@ -233,19 +273,48 @@ export default function Admin() {
           <CardDescription>一般ユーザーから送られた報告内容を確認できます。</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <Tabs
+              value={inquiryTab}
+              onValueChange={(value) => setInquiryTab(value as "open" | "resolved")}
+            >
+              <TabsList>
+                <TabsTrigger value="open">確認中</TabsTrigger>
+                <TabsTrigger value="resolved">完了</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <p className="text-xs text-muted-foreground">
+              {filteredInquiries.length} 件
+            </p>
+          </div>
           {inquiriesQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">問い合わせを取得中...</p>
-          ) : (inquiriesQuery.data ?? []).length === 0 ? (
+          ) : filteredInquiries.length === 0 ? (
             <p className="text-sm text-muted-foreground">問い合わせはありません。</p>
           ) : (
             <div className="space-y-3">
-              {(inquiriesQuery.data ?? []).map((item) => (
+              {pagedInquiries.map((item) => (
                 <div key={item.id} className="rounded-lg border border-border p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium break-all">{item.title}</p>
-                    <Badge variant="outline">
-                      {new Date(item.createdAt).toLocaleString("ja-JP")}
-                    </Badge>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={item.isResolved === 1}
+                        disabled={pendingInquiryId === item.id}
+                        onCheckedChange={(checked) =>
+                          handleInquiryStatusChange(item.id, checked === true)
+                        }
+                        aria-label="Mark inquiry as resolved"
+                      />
+                      <p className="font-medium break-all">{item.title}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={item.isResolved === 1 ? "default" : "secondary"}>
+                        {item.isResolved === 1 ? "完了" : "確認中"}
+                      </Badge>
+                      <Badge variant="outline">
+                        {new Date(item.createdAt).toLocaleString("ja-JP")}
+                      </Badge>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground break-all">
                     送信者: {item.userName || "不明"} {item.userEmail ? `(${item.userEmail})` : ""}
@@ -253,6 +322,31 @@ export default function Admin() {
                   <p className="text-sm whitespace-pre-wrap break-words">{item.content}</p>
                 </div>
               ))}
+              {inquiryTotalPages > 1 && (
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={inquiryPage <= 1}
+                    onClick={() => setInquiryPage((prev) => Math.max(1, prev - 1))}
+                  >
+                    前へ
+                  </Button>
+                  <p className="text-xs text-muted-foreground min-w-16 text-center">
+                    {inquiryPage} / {inquiryTotalPages}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={inquiryPage >= inquiryTotalPages}
+                    onClick={() =>
+                      setInquiryPage((prev) => Math.min(inquiryTotalPages, prev + 1))
+                    }
+                  >
+                    次へ
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -260,7 +354,10 @@ export default function Admin() {
 
       <Card>
         <CardHeader>
-          <CardTitle>ユーザーアカウント管理</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            ユーザーアカウント管理
+            <Badge variant="outline">合計 {users.length} 人</Badge>
+          </CardTitle>
           <CardDescription>
             管理者ロールの付与/剥奪、ユーザー削除（事例を削除 or 管理者へ移管）ができます（オーナーは固定）。
           </CardDescription>
