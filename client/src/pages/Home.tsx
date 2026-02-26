@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Sun, User } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Share2, Sun, User } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AddCaseModal } from "@/components/AddCaseModal";
 import { CaseDetailModal } from "@/components/CaseDetailModal";
@@ -220,8 +220,33 @@ export default function Home() {
   };
 
   const handleEditCase = (caseId: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("caseId");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
     setSelectedCaseId(null);
     setEditingCaseId(caseId);
+  };
+  const openCaseDetail = (caseId: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("caseId", String(caseId));
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    setSelectedCaseId(caseId);
+  };
+  const closeCaseDetail = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("caseId");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    setSelectedCaseId(null);
+  };
+  const handleShareCase = async (caseId: number) => {
+    const shareUrl = `${window.location.origin}/?caseId=${caseId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("共有リンクをコピーしました");
+    } catch (error) {
+      console.error(error);
+      toast.error("共有リンクのコピーに失敗しました");
+    }
   };
   const handlePinCase = async (caseId: number) => {
     if (!isAuthenticated) {
@@ -290,6 +315,15 @@ export default function Home() {
       toast.error("問い合わせ送信に失敗しました");
     }
   };
+  useEffect(() => {
+    if (cases.length === 0) return;
+    const caseIdParam = new URLSearchParams(window.location.search).get("caseId");
+    const caseId = Number(caseIdParam);
+    if (!Number.isInteger(caseId) || caseId <= 0) return;
+    const exists = cases.some((item) => item.id === caseId);
+    if (!exists) return;
+    setSelectedCaseId(caseId);
+  }, [cases]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -464,7 +498,7 @@ export default function Home() {
                 <Card
                   key={caseStudy.id}
                   className="cursor-pointer hover:shadow-lg transition-shadow group"
-                  onClick={() => setSelectedCaseId(caseStudy.id)}
+                  onClick={() => openCaseDetail(caseStudy.id)}
                 >
                   {caseStudy.thumbnailUrl && (
                     <div className="relative w-full h-64 overflow-hidden rounded-t-lg">
@@ -507,6 +541,17 @@ export default function Home() {
                               caseStudy.isFavorite ? "fill-red-500 text-red-500" : ""
                             }`}
                           />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await handleShareCase(caseStudy.id);
+                          }}
+                        >
+                          <Share2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -551,11 +596,12 @@ export default function Home() {
       {selectedCaseId && (
         <CaseDetailModal
           caseStudy={selectedCase}
-          onClose={() => setSelectedCaseId(null)}
+          onClose={closeCaseDetail}
           onFavoriteToggle={handleFavoriteToggle}
           onEdit={handleEditCase}
           onDelete={handleDeleteCase}
           onPin={handlePinCase}
+          onShare={handleShareCase}
           onAuthorClick={(userId) => setProfileUserId(userId)}
           canEdit={canEditSelected}
           canDelete={canDeleteSelected}

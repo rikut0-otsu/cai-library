@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Copy, ExternalLink, Heart, Pencil, Pin, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Heart, Pencil, Pin, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface CaseDetailModalProps {
@@ -22,6 +22,7 @@ interface CaseDetailModalProps {
   canDelete: boolean;
   canPin: boolean;
   onPin: (id: number) => void;
+  onShare: (id: number) => void;
 }
 
 export function CaseDetailModal({
@@ -35,6 +36,7 @@ export function CaseDetailModal({
   canDelete,
   canPin,
   onPin,
+  onShare,
 }: CaseDetailModalProps) {
 
   if (!caseStudy) {
@@ -62,6 +64,9 @@ export function CaseDetailModal({
   };
   const handlePinClick = () => {
     onPin(caseStudy.id);
+  };
+  const handleShareClick = () => {
+    onShare(caseStudy.id);
   };
 
   const isEdited =
@@ -166,6 +171,14 @@ export function CaseDetailModal({
                   <Pin className="w-5 h-5" />
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleShareClick}
+                aria-label="Share case study"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </DialogHeader>
