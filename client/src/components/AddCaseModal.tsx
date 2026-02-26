@@ -19,7 +19,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 
 interface AddCaseModalProps {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (result: { mode: "create" | "edit"; id?: number; title: string }) => void;
   caseStudy?: CaseStudy | null;
   mode?: "create" | "edit";
 }
@@ -231,9 +231,9 @@ export function AddCaseModal({
         });
 
         toast.success("事例を更新しました");
-        onSuccess();
+        onSuccess({ mode: "edit", id: caseStudy.id, title: formData.title });
       } else {
-        await createMutation.mutateAsync({
+        const created = await createMutation.mutateAsync({
           title: formData.title,
           description: formData.description,
           category: formData.category,
@@ -246,7 +246,7 @@ export function AddCaseModal({
         });
 
         toast.success("事例を追加しました");
-        onSuccess();
+        onSuccess({ mode: "create", id: created?.id, title: formData.title });
       }
     } catch (error) {
       toast.error(

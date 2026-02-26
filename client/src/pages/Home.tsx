@@ -49,6 +49,11 @@ type Category =
   | "activation";
 
 type SortOption = "default" | "createdDesc" | "createdAsc" | "updatedDesc";
+type SharePayload = {
+  id: number;
+  title: string;
+  authorName: string;
+};
 
 const categories = [
   { id: "all" as Category, label: "ALL" },
@@ -79,6 +84,10 @@ export default function Home() {
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
   const [inquiryTitle, setInquiryTitle] = useState("");
   const [inquiryContent, setInquiryContent] = useState("");
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
+  const [isCelebrationModalOpen, setIsCelebrationModalOpen] = useState(false);
+  const [celebrationPayload, setCelebrationPayload] = useState<SharePayload | null>(null);
   const { theme, toggleTheme, switchable } = useTheme();
   const toggleFavoriteMutation = trpc.caseStudies.toggleFavorite.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
@@ -106,6 +115,15 @@ export default function Home() {
     Boolean(user) &&
     (selectedCase?.userId === user?.id || user?.role === "admin");
   const canPinSelected = Boolean(selectedCase) && Boolean(user?.isOwner);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const shareUrl = sharePayload ? `${origin}/?caseId=${sharePayload.id}` : "";
+  const shareMessage = sharePayload
+    ? `${sharePayload.authorName}さんが「${sharePayload.title}」をCAILIBRARYに追加しました！あなたもログインしてチェックしよう！`
+    : "";
+  const shareText = sharePayload ? `${shareMessage}\n${shareUrl}` : "";
+  const slackText = sharePayload
+    ? `*${sharePayload.authorName}さんが「${sharePayload.title}」をCAILIBRARYに追加しました！*\nあなたもログインしてチェックしよう！\n${shareUrl}`
+    : "";
 
   const filteredCases = useMemo(() => {
     const filtered = cases.filter((c) => {
@@ -226,6 +244,15 @@ export default function Home() {
     setSelectedCaseId(null);
     setEditingCaseId(caseId);
   };
+  const buildSharePayload = (caseId: number): SharePayload | null => {
+    const found = cases.find((item) => item.id === caseId);
+    if (!found) return null;
+    return {
+      id: found.id,
+      title: found.title,
+      authorName: found.authorName || "だれか",
+    };
+  };
   const openCaseDetail = (caseId: number) => {
     const url = new URL(window.location.href);
     url.searchParams.set("caseId", String(caseId));
@@ -238,15 +265,50 @@ export default function Home() {
     window.history.replaceState({}, "", `${url.pathname}${url.search}`);
     setSelectedCaseId(null);
   };
-  const handleShareCase = async (caseId: number) => {
-    const shareUrl = `${window.location.origin}/?caseId=${caseId}`;
+  const handleCopyText = async (text: string, successMessage: string) => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("共有リンクをコピーしました");
+      await navigator.clipboard.writeText(text);
+      toast.success(successMessage);
     } catch (error) {
       console.error(error);
-      toast.error("共有リンクのコピーに失敗しました");
+      toast.error("コピーに失敗しました");
     }
+  };
+  const openShareDialog = (caseId: number) => {
+    const payload = buildSharePayload(caseId);
+    if (!payload) {
+      toast.error("共有対象の事例が見つかりませんでした");
+      return;
+    }
+    setSharePayload(payload);
+    setIsShareModalOpen(true);
+  };
+  const handleShareCase = async (caseId: number) => {
+    openShareDialog(caseId);
+  };
+  const handleNativeShare = async () => {
+    if (!sharePayload) return;
+    if (!navigator.share) {
+      toast.error("この端末はシステム共有に対応していません");
+      return;
+    }
+    try {
+      await navigator.share({
+        title: sharePayload.title,
+        text: shareMessage,
+        url: shareUrl,
+      });
+    } catch (error) {
+      // User-cancelled share should be silent.
+      if (error instanceof Error && error.name === "AbortError") return;
+      console.error(error);
+      toast.error("共有に失敗しました");
+    }
+  };
+  const handleOpenXShare = () => {
+    if (!shareText) return;
+    const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+    window.open(xUrl, "_blank", "noopener,noreferrer");
   };
   const handlePinCase = async (caseId: number) => {
     if (!isAuthenticated) {
@@ -618,9 +680,18 @@ export default function Home() {
       {isAddModalOpen && (
         <AddCaseModal
           onClose={() => setIsAddModalOpen(false)}
-          onSuccess={() => {
+          onSuccess={(result) => {
             setIsAddModalOpen(false);
             utils.caseStudies.list.invalidate();
+            if (result.mode === "create" && result.id) {
+              const payload: SharePayload = {
+                id: result.id,
+                title: result.title,
+                authorName: (user?.name ?? "").trim() || "だれか",
+              };
+              setCelebrationPayload(payload);
+              setIsCelebrationModalOpen(true);
+            }
           }}
         />
       )}
@@ -630,12 +701,85 @@ export default function Home() {
           mode="edit"
           caseStudy={editingCase}
           onClose={() => setEditingCaseId(null)}
-          onSuccess={() => {
+          onSuccess={(_result) => {
             setEditingCaseId(null);
             utils.caseStudies.list.invalidate();
           }}
         />
       )}
+
+      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>事例を共有</DialogTitle>
+            <DialogDescription>
+              SNSやSlackで共有しやすい文面を用意しました。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm whitespace-pre-wrap break-words">{shareText}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button onClick={() => handleCopyText(shareUrl, "共有リンクをコピーしました")}>
+                リンクをコピー
+              </Button>
+              <Button variant="outline" onClick={() => handleCopyText(shareText, "紹介文をコピーしました")}>
+                紹介文をコピー
+              </Button>
+              <Button variant="outline" onClick={() => handleCopyText(slackText, "Slack向け文面をコピーしました")}>
+                Slack向けコピー
+              </Button>
+              <Button variant="outline" onClick={handleOpenXShare}>
+                Xで共有
+              </Button>
+              {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+                <Button className="sm:col-span-2" variant="secondary" onClick={handleNativeShare}>
+                  端末の共有機能を使う
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCelebrationModalOpen} onOpenChange={setIsCelebrationModalOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>事例の投稿ありがとうございます！</DialogTitle>
+            <DialogDescription>
+              投稿した事例をすぐにシェアして、チームに広めましょう。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium break-words">{celebrationPayload?.title}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button
+                onClick={() => {
+                  if (!celebrationPayload) return;
+                  setSharePayload(celebrationPayload);
+                  setIsShareModalOpen(true);
+                  setIsCelebrationModalOpen(false);
+                }}
+              >
+                共有オプションを開く
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!celebrationPayload) return;
+                  openCaseDetail(celebrationPayload.id);
+                  setIsCelebrationModalOpen(false);
+                }}
+              >
+                投稿を開く
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isInquiryModalOpen} onOpenChange={setIsInquiryModalOpen}>
         <DialogContent className="max-w-xl">
