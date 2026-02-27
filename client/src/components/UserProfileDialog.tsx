@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -36,7 +37,11 @@ export function UserProfileDialog({ userId, open, onClose }: UserProfileDialogPr
         ) : (
           <div className="space-y-6">
             <div className="rounded-lg border p-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <Avatar className="size-12 border">
+                  <AvatarImage src={query.data.user.avatarUrl || undefined} alt="プロフィール画像" />
+                  <AvatarFallback>{(query.data.user.name || "U").slice(0, 1).toUpperCase()}</AvatarFallback>
+                </Avatar>
                 <p className="text-lg font-semibold">{query.data.user.name}</p>
                 {query.data.user.role === "admin" && <Badge>管理者</Badge>}
               </div>
