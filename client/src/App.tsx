@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
+import AIConsult from "./pages/AIConsult";
 
 function ProtectedHome() {
   return (
@@ -34,6 +35,14 @@ function ProtectedProfile() {
   );
 }
 
+function ProtectedAIConsult() {
+  return (
+    <RequireAuth>
+      <AIConsult />
+    </RequireAuth>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -41,6 +50,7 @@ function Router() {
       <Route path={"/"} component={ProtectedHome} />
       <Route path={"/admin"} component={ProtectedAdmin} />
       <Route path={"/profile"} component={ProtectedProfile} />
+      <Route path={"/ai-consult"} component={ProtectedAIConsult} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -434,9 +434,7 @@ export default function Home() {
               <AIConsultButton
                 iconNormal="/icon-normal.png"
                 iconHeart="/icon-heart.png"
-                href="https://notebooklm.google/"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/ai-consult"
               />
 
               {user?.role === "admin" && (
