@@ -2,6 +2,7 @@ import { type CaseStudy } from "@/lib/caseStudies";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -624,16 +625,25 @@ export default function Home() {
                       </div>
                     </div>
                     <CardDescription>{caseStudy.description}</CardDescription>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      作成者:
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>作成者:</span>
+                      <Avatar className="size-5 border">
+                        <AvatarImage
+                          src={caseStudy.authorAvatarUrl || undefined}
+                          alt={`${caseStudy.authorName || "不明"}のプロフィール画像`}
+                        />
+                        <AvatarFallback>
+                          {(caseStudy.authorName || "不").slice(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <button
                         type="button"
-                        className="ml-1 underline underline-offset-2 hover:text-foreground"
+                        className="underline underline-offset-2 hover:text-foreground"
                         onClick={(e) => handleAuthorClick(e, caseStudy.userId)}
                       >
                         {caseStudy.authorName || "不明"}
                       </button>
-                    </p>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2 mb-3">

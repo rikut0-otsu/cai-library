@@ -514,6 +514,7 @@ export const appRouter = router({
         isFavorite: true,
         isPinned: f.caseStudy.id === pinnedCaseStudyId,
         authorName: f.authorName ?? "不明",
+        authorAvatarUrl: f.authorAvatarUrl ?? "",
         authorRole: f.authorRole ?? "user",
         authorIsOwner: Boolean(f.authorIsOwner),
       }));
