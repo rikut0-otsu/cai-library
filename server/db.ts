@@ -328,6 +328,8 @@ export async function getUserProfile(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
 
+  await ensureUserProfilesTable();
+
   try {
     const result = await db
       .select()
@@ -349,6 +351,7 @@ export async function updateUserProfile(
   data: {
     name: string;
     departmentRole: string | null;
+    avatarUrl: string | null;
   }
 ) {
   const db = await getDb();
@@ -356,6 +359,8 @@ export async function updateUserProfile(
     console.warn("[Database] Cannot update user profile: database not available");
     return false;
   }
+
+  await ensureUserProfilesTable();
 
   await db
     .update(users)
@@ -369,17 +374,19 @@ export async function updateUserProfile(
     const values: InsertUserProfile = {
       userId,
       departmentRole: data.departmentRole,
+      avatarUrl: data.avatarUrl,
     };
     await db.insert(userProfiles).values(values).onConflictDoUpdate({
       target: userProfiles.userId,
       set: {
         departmentRole: data.departmentRole,
+        avatarUrl: data.avatarUrl,
         updatedAt: Date.now(),
       },
     });
   } catch (error) {
     console.warn(
-      "[Database] Failed to persist departmentRole. Migration may be pending.",
+      "[Database] Failed to persist user profile fields. Migration may be pending.",
       error
     );
   }
@@ -565,5 +572,27 @@ async function ensureInquiriesTable() {
   } catch {}
   try {
     await db.run(sql`ALTER TABLE inquiries ADD COLUMN resolved_at integer`);
+  } catch {}
+}
+
+async function ensureUserProfilesTable() {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      user_id integer primary key references users(id) on delete cascade,
+      department_role text,
+      avatar_url text,
+      created_at integer not null default (unixepoch() * 1000),
+      updated_at integer not null default (unixepoch() * 1000)
+    )
+  `);
+
+  try {
+    await db.run(sql`ALTER TABLE user_profiles ADD COLUMN department_role text`);
+  } catch {}
+  try {
+    await db.run(sql`ALTER TABLE user_profiles ADD COLUMN avatar_url text`);
   } catch {}
 }

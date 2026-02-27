@@ -13,6 +13,7 @@ CREATE TABLE users (
 CREATE TABLE user_profiles (
   user_id integer primary key references users(id) on delete cascade,
   department_role text,
+  avatar_url text,
   created_at integer not null default (unixepoch() * 1000),
   updated_at integer not null default (unixepoch() * 1000)
 );

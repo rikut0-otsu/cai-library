@@ -69,6 +69,7 @@ export const appRouter = router({
           role: user.role,
           loginMethod: user.loginMethod,
           departmentRole: profile?.departmentRole ?? "",
+          avatarUrl: profile?.avatarUrl ?? "",
         },
         caseStudies: cases.map((c) => ({
           ...c,
@@ -86,15 +87,36 @@ export const appRouter = router({
         z.object({
           name: z.string().trim().min(1).max(80),
           departmentRole: z.string().trim().max(120).optional(),
+          avatarUrl: z.string().trim().max(2048).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await db.updateUserProfile(ctx.user.id, {
           name: input.name,
           departmentRole: input.departmentRole?.trim() || null,
+          avatarUrl: input.avatarUrl?.trim() || null,
         });
 
         return { success: true } as const;
+      }),
+    uploadAvatar: protectedProcedure
+      .input(
+        z.object({
+          filename: z.string(),
+          contentType: z.string(),
+          base64Data: z.string(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const { storagePut } = await import("./storage");
+        const buffer = decodeBase64(input.base64Data);
+        const randomSuffix = Math.random().toString(36).substring(2, 15);
+        const fileKey = `profiles/${ctx.user.id}/${input.filename}-${randomSuffix}`;
+        const result = await storagePut(fileKey, buffer, input.contentType);
+        return {
+          url: result.url,
+          key: result.key,
+        };
       }),
     getByUserId: publicProcedure
       .input(z.object({ userId: z.number().int().positive() }))
@@ -111,6 +133,7 @@ export const appRouter = router({
             name: user.name ?? "不明",
             role: user.role,
             departmentRole: profile?.departmentRole ?? "",
+            avatarUrl: profile?.avatarUrl ?? "",
           },
           caseStudies: cases.map((c) => ({
             ...c,

@@ -37,6 +37,7 @@ export const userProfiles = sqliteTable("user_profiles", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   departmentRole: text("department_role"),
+  avatarUrl: text("avatar_url"),
   createdAt: integer("created_at").notNull().default(nowMs),
   updatedAt: integer("updated_at").notNull().default(nowMs),
 });
