@@ -87,7 +87,7 @@ export const appRouter = router({
         z.object({
           name: z.string().trim().min(1).max(80),
           departmentRole: z.string().trim().max(120).optional(),
-          avatarUrl: z.string().trim().max(2048).optional(),
+          avatarUrl: z.string().trim().max(2_000_000).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {

@@ -132,12 +132,18 @@ export default function Profile() {
       let avatarUrlToSave = avatarPreview || "";
 
       if (avatarPreview?.startsWith("data:")) {
-        const uploaded = await uploadAvatarMutation.mutateAsync({
-          filename: "avatar.jpg",
-          contentType: "image/jpeg",
-          base64Data: extractBase64Data(avatarPreview),
-        });
-        avatarUrlToSave = uploaded.url;
+        try {
+          const uploaded = await uploadAvatarMutation.mutateAsync({
+            filename: "avatar.jpg",
+            contentType: "image/jpeg",
+            base64Data: extractBase64Data(avatarPreview),
+          });
+          avatarUrlToSave = uploaded.url;
+        } catch (uploadError) {
+          console.error(uploadError);
+          // Fallback: keep compressed data URL when storage upload is unavailable.
+          avatarUrlToSave = avatarPreview;
+        }
       }
 
       await updateMutation.mutateAsync({
