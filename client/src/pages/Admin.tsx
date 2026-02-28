@@ -13,10 +13,24 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 type Role = "user" | "admin";
+type UserSortOption =
+  | "createdDesc"
+  | "createdAsc"
+  | "nameAsc"
+  | "nameDesc"
+  | "lastSignedInDesc"
+  | "roleAdminFirst";
 
 export default function Admin() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -25,6 +39,8 @@ export default function Admin() {
   const [inviteCode, setInviteCode] = useState("");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingDeleteUserId, setPendingDeleteUserId] = useState<number | null>(null);
+  const [userSort, setUserSort] = useState<UserSortOption>("createdDesc");
+  const [userPage, setUserPage] = useState(1);
   const [inquiryTab, setInquiryTab] = useState<"open" | "resolved">("open");
   const [inquiryPage, setInquiryPage] = useState(1);
   const [pendingInquiryId, setPendingInquiryId] = useState<number | null>(null);
@@ -97,6 +113,43 @@ export default function Admin() {
       );
     });
   }, [users, search]);
+  const sortedUsers = useMemo(() => {
+    const items = [...filteredUsers];
+    switch (userSort) {
+      case "createdAsc":
+        return items.sort((a, b) => a.createdAt - b.createdAt);
+      case "nameAsc":
+        return items.sort((a, b) =>
+          (a.name ?? a.email ?? a.openId).localeCompare(
+            b.name ?? b.email ?? b.openId,
+            "ja"
+          )
+        );
+      case "nameDesc":
+        return items.sort((a, b) =>
+          (b.name ?? b.email ?? b.openId).localeCompare(
+            a.name ?? a.email ?? a.openId,
+            "ja"
+          )
+        );
+      case "lastSignedInDesc":
+        return items.sort((a, b) => b.lastSignedIn - a.lastSignedIn);
+      case "roleAdminFirst":
+        return items.sort((a, b) => {
+          if (a.role !== b.role) return a.role === "admin" ? -1 : 1;
+          return b.createdAt - a.createdAt;
+        });
+      case "createdDesc":
+      default:
+        return items.sort((a, b) => b.createdAt - a.createdAt);
+    }
+  }, [filteredUsers, userSort]);
+  const userPageSize = 10;
+  const userTotalPages = Math.max(1, Math.ceil(sortedUsers.length / userPageSize));
+  const pagedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize;
+    return sortedUsers.slice(start, start + userPageSize);
+  }, [sortedUsers, userPage]);
   const filteredInquiries = useMemo(() => {
     return inquiries.filter((item) =>
       inquiryTab === "open" ? item.isResolved !== 1 : item.isResolved === 1
@@ -111,6 +164,12 @@ export default function Admin() {
   useEffect(() => {
     setInquiryPage((prev) => Math.min(prev, inquiryTotalPages));
   }, [inquiryTotalPages]);
+  useEffect(() => {
+    setUserPage(1);
+  }, [search, userSort]);
+  useEffect(() => {
+    setUserPage((prev) => Math.min(prev, userTotalPages));
+  }, [userTotalPages]);
 
   const handleRoleChange = async (userId: number, role: Role) => {
     try {
@@ -395,19 +454,44 @@ export default function Admin() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input
-            value={search}
-            onChange={event => setSearch(event.target.value)}
-            placeholder="名前・メール・OpenIDで検索"
-          />
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <Input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="名前・メール・OpenIDで検索"
+              className="md:max-w-md"
+            />
+            <div className="flex items-center gap-2 md:shrink-0">
+              <p className="text-xs text-muted-foreground">並び替え</p>
+              <Select
+                value={userSort}
+                onValueChange={(value) => setUserSort(value as UserSortOption)}
+              >
+                <SelectTrigger className="w-full md:w-56">
+                  <SelectValue placeholder="並び替え" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdDesc">登録日が新しい順</SelectItem>
+                  <SelectItem value="createdAsc">登録日が古い順</SelectItem>
+                  <SelectItem value="lastSignedInDesc">最終ログインが新しい順</SelectItem>
+                  <SelectItem value="nameAsc">名前 A-Z</SelectItem>
+                  <SelectItem value="nameDesc">名前 Z-A</SelectItem>
+                  <SelectItem value="roleAdminFirst">管理者を先頭</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {sortedUsers.length} 件表示中
+          </p>
 
           {usersQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">ユーザー一覧を取得中...</p>
-          ) : filteredUsers.length === 0 ? (
+          ) : sortedUsers.length === 0 ? (
             <p className="text-sm text-muted-foreground">対象ユーザーがいません。</p>
           ) : (
             <div className="space-y-3">
-              {filteredUsers.map(item => {
+              {pagedUsers.map(item => {
                 const isSelf = item.id === user.id;
                 const isLocked = item.isOwner || isSelf;
                 const isPending = pendingUserId === item.id;
@@ -470,6 +554,31 @@ export default function Admin() {
                   </div>
                 );
               })}
+              {userTotalPages > 1 && (
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={userPage <= 1}
+                    onClick={() => setUserPage((prev) => Math.max(1, prev - 1))}
+                  >
+                    前へ
+                  </Button>
+                  <p className="text-xs text-muted-foreground min-w-16 text-center">
+                    {userPage} / {userTotalPages}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={userPage >= userTotalPages}
+                    onClick={() =>
+                      setUserPage((prev) => Math.min(userTotalPages, prev + 1))
+                    }
+                  >
+                    次へ
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
