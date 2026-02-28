@@ -99,35 +99,12 @@ export function CaseDetailModal({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <DialogTitle className="text-2xl">{caseStudy.title}</DialogTitle>
-                {isEdited && <Badge variant="outline">編集済み</Badge>}
-              </div>
-              <DialogDescription className="text-base">
-                {caseStudy.description}
-              </DialogDescription>
-              <p className="text-xs text-muted-foreground mt-2">
-                作成者:
-                <button
-                  type="button"
-                  onClick={() => onAuthorClick(caseStudy.userId)}
-                  className="ml-1 underline underline-offset-2 hover:text-foreground"
-                >
-                  {caseStudy.authorName || "不明"}
-                </button>
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                投稿日: {formatDateTime(caseStudy.createdAt)}
-              </p>
-              {isEdited && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  編集日: {formatDateTime(caseStudy.updatedAt)}
-                </p>
-              )}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-2xl">{caseStudy.title}</DialogTitle>
+              {isEdited && <Badge variant="outline">編集済み</Badge>}
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -181,6 +158,27 @@ export function CaseDetailModal({
               </Button>
             </div>
           </div>
+          <DialogDescription className="text-base">
+            {caseStudy.description}
+          </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-2">
+            作成者:
+            <button
+              type="button"
+              onClick={() => onAuthorClick(caseStudy.userId)}
+              className="ml-1 underline underline-offset-2 hover:text-foreground"
+            >
+              {caseStudy.authorName || "不明"}
+            </button>
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            投稿日: {formatDateTime(caseStudy.createdAt)}
+          </p>
+          {isEdited && (
+            <p className="text-xs text-muted-foreground mt-1">
+              編集日: {formatDateTime(caseStudy.updatedAt)}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
