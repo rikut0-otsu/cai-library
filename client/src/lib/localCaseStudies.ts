@@ -2,7 +2,6 @@ export type CaseStudyCategory =
   | "prompt"
   | "automation"
   | "tools"
-  | "business"
   | "activation";
 
 export type CaseStudy = {
@@ -47,7 +46,14 @@ const normalizeCaseStudy = (input: unknown): CaseStudy | null => {
   const id = typeof raw.id === "number" ? raw.id : Date.now();
   const createdAt =
     typeof raw.createdAt === "number" ? raw.createdAt : Date.now();
-  const category = (raw.category ?? "automation") as CaseStudyCategory;
+  const categoryRaw = String(raw.category ?? "automation");
+  const category: CaseStudyCategory =
+    categoryRaw === "prompt" ||
+    categoryRaw === "automation" ||
+    categoryRaw === "tools" ||
+    categoryRaw === "activation"
+      ? categoryRaw
+      : "automation";
 
   return {
     id,

@@ -79,7 +79,7 @@ describe("caseStudies.create", () => {
     const result = await caller.caseStudies.create({
       title: "Test Case with Impact",
       description: "Test description",
-      category: "business",
+      category: "automation",
       tools: ["Claude"],
       challenge: "Test challenge",
       solution: "Test solution",

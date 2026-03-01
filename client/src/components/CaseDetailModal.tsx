@@ -11,6 +11,8 @@ import {
 import { Copy, ExternalLink, Heart, Pencil, Pin, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+const REFERENCE_LINK_PREFIX = "__reference_link__:";
+
 interface CaseDetailModalProps {
   caseStudy: CaseStudy | null;
   onClose: () => void;
@@ -80,8 +82,19 @@ export function CaseDetailModal({
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date(timestamp));
-  const stepText = caseStudy.steps.join("\n");
-  const referenceLink = caseStudy.steps[0] ?? "";
+  const referenceLinkFromSteps = caseStudy.steps.find((item) =>
+    item.startsWith(REFERENCE_LINK_PREFIX)
+  );
+  const referenceLink =
+    caseStudy.category === "tools"
+      ? (caseStudy.steps[0] ?? "")
+      : (referenceLinkFromSteps?.slice(REFERENCE_LINK_PREFIX.length).trim() ?? "");
+  const stepText =
+    caseStudy.category === "tools"
+      ? ""
+      : caseStudy.steps
+          .filter((item) => !item.startsWith(REFERENCE_LINK_PREFIX))
+          .join("\n");
   const canOpenReferenceLink = /^https?:\/\//i.test(referenceLink);
 
   const copyText = async (text: string, label: string) => {
@@ -299,6 +312,28 @@ export function CaseDetailModal({
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+          {caseStudy.category !== "tools" && (
+            <div>
+              <h3 className="font-semibold text-lg mb-2">参考リンク</h3>
+              {referenceLink ? (
+                canOpenReferenceLink ? (
+                  <a
+                    href={referenceLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-primary hover:underline break-all"
+                  >
+                    {referenceLink}
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                ) : (
+                  <p className="text-muted-foreground break-all">{referenceLink}</p>
+                )
+              ) : (
+                <p className="text-muted-foreground">未設定</p>
+              )}
             </div>
           )}
 

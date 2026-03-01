@@ -10,6 +10,21 @@ import { ENV } from "./_core/env";
 
 const INVITE_CODE_SETTING_KEY = "auth.inviteCode";
 const PINNED_CASE_STUDY_ID_SETTING_KEY = "caseStudies.pinnedCaseStudyId";
+const CASE_STUDY_CATEGORY_VALUES = ["prompt", "automation", "tools", "activation"] as const;
+type CaseStudyCategory = (typeof CASE_STUDY_CATEGORY_VALUES)[number];
+
+const normalizeCaseStudyCategory = (category: string): CaseStudyCategory => {
+  switch (category) {
+    case "prompt":
+    case "automation":
+    case "tools":
+    case "activation":
+      return category;
+    case "business":
+    default:
+      return "automation";
+  }
+};
 
 const decodeBase64 = (input: string) => {
   if (typeof atob === "function") {
@@ -73,6 +88,7 @@ export const appRouter = router({
         },
         caseStudies: cases.map((c) => ({
           ...c,
+          category: normalizeCaseStudyCategory(c.category),
           tools: JSON.parse(c.tools),
           steps: JSON.parse(c.steps),
           tags: JSON.parse(c.tags),
@@ -322,6 +338,7 @@ export const appRouter = router({
         
         return cases.map(c => ({
           ...c,
+          category: normalizeCaseStudyCategory(c.category),
           tools: JSON.parse(c.tools),
           steps: JSON.parse(c.steps),
           tags: JSON.parse(c.tags),
@@ -335,6 +352,7 @@ export const appRouter = router({
       
       return cases.map(c => ({
         ...c,
+        category: normalizeCaseStudyCategory(c.category),
         tools: JSON.parse(c.tools),
         steps: JSON.parse(c.steps),
         tags: JSON.parse(c.tags),
@@ -357,6 +375,7 @@ export const appRouter = router({
         
         return {
           ...caseStudy,
+          category: normalizeCaseStudyCategory(caseStudy.category),
           tools: JSON.parse(caseStudy.tools),
           steps: JSON.parse(caseStudy.steps),
           tags: JSON.parse(caseStudy.tags),
@@ -373,13 +392,7 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1),
           description: z.string().min(1),
-          category: z.enum([
-            "prompt",
-            "automation",
-            "tools",
-            "business",
-            "activation",
-          ]),
+          category: z.enum(CASE_STUDY_CATEGORY_VALUES),
           tools: z.array(z.string()),
           challenge: z.string().min(1),
           solution: z.string().min(1),
@@ -430,13 +443,7 @@ export const appRouter = router({
           id: z.number(),
           title: z.string().min(1),
           description: z.string().min(1),
-          category: z.enum([
-            "prompt",
-            "automation",
-            "tools",
-            "business",
-            "activation",
-          ]),
+          category: z.enum(CASE_STUDY_CATEGORY_VALUES),
           tools: z.array(z.string()),
           challenge: z.string().min(1),
           solution: z.string().min(1),
@@ -508,6 +515,7 @@ export const appRouter = router({
       );
       return favorites.map(f => ({
         ...f.caseStudy,
+        category: normalizeCaseStudyCategory(f.caseStudy.category),
         tools: JSON.parse(f.caseStudy.tools),
         steps: JSON.parse(f.caseStudy.steps),
         tags: JSON.parse(f.caseStudy.tags),

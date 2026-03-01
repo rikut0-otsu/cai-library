@@ -24,15 +24,36 @@ interface AddCaseModalProps {
   mode?: "create" | "edit";
 }
 
-type Category = "prompt" | "automation" | "tools" | "business" | "activation";
+type Category = "prompt" | "automation" | "tools" | "activation";
+const REFERENCE_LINK_PREFIX = "__reference_link__:";
 
 const categories = [
   { id: "prompt" as Category, label: "プロンプト集" },
   { id: "automation" as Category, label: "自動化" },
   { id: "tools" as Category, label: "ツール活用" },
-  { id: "business" as Category, label: "業務活用" },
   { id: "activation" as Category, label: "活性化施策" },
 ];
+
+const extractReferenceLinkFromSteps = (steps: string[]) => {
+  const marker = steps.find((item) => item.startsWith(REFERENCE_LINK_PREFIX));
+  return marker ? marker.slice(REFERENCE_LINK_PREFIX.length).trim() : "";
+};
+
+const removeReferenceLinkFromSteps = (steps: string[]) =>
+  steps.filter((item) => !item.startsWith(REFERENCE_LINK_PREFIX));
+
+const normalizeCategory = (category?: string): Category => {
+  switch (category) {
+    case "prompt":
+    case "automation":
+    case "tools":
+    case "activation":
+      return category;
+    case "business":
+    default:
+      return "automation";
+  }
+};
 
 function getStepFieldConfig(category: Category) {
   switch (category) {
@@ -78,16 +99,27 @@ export function AddCaseModal({
   const JPEG_QUALITY = 0.82;
   const isEditMode = mode === "edit" && Boolean(caseStudy);
 
-  const [formData, setFormData] = useState(() => ({
-    title: caseStudy?.title ?? "",
-    description: caseStudy?.description ?? "",
-    category: (caseStudy?.category ?? "automation") as Category,
-    tools: caseStudy?.tools?.join(", ") ?? "",
-    challenge: caseStudy?.challenge ?? "",
-    solution: caseStudy?.solution ?? "",
-    steps: caseStudy?.steps?.join("\n") ?? "",
-    impact: caseStudy?.impact ?? "",
-  }));
+  const [formData, setFormData] = useState(() => {
+    const initialSteps = caseStudy?.steps ?? [];
+    const stepValuesWithoutRef = removeReferenceLinkFromSteps(initialSteps);
+    return {
+      title: caseStudy?.title ?? "",
+      description: caseStudy?.description ?? "",
+      category: normalizeCategory(caseStudy?.category),
+      tools: caseStudy?.tools?.join(", ") ?? "",
+      challenge: caseStudy?.challenge ?? "",
+      solution: caseStudy?.solution ?? "",
+      steps:
+        caseStudy?.category === "tools"
+          ? (caseStudy?.steps?.[0] ?? "")
+          : stepValuesWithoutRef.join("\n"),
+      referenceLink:
+        caseStudy?.category === "tools"
+          ? ""
+          : extractReferenceLinkFromSteps(initialSteps),
+      impact: caseStudy?.impact ?? "",
+    };
+  });
   const [imagePreview, setImagePreview] = useState<string | null>(
     caseStudy?.thumbnailUrl ?? null
   );
@@ -206,10 +238,18 @@ export function AddCaseModal({
         .filter((s) => s.length > 0);
     }
 
-    if ((formData.category === "prompt" || stepFieldConfig.required) && stepsArray.length === 0) {
+    const hasPrimaryStep = stepsArray.length > 0;
+    if ((formData.category === "prompt" || stepFieldConfig.required) && !hasPrimaryStep) {
       toast.error(`${stepFieldConfig.label}を入力してください`);
       setIsSaving(false);
       return;
+    }
+
+    if (formData.category !== "tools") {
+      const link = formData.referenceLink.trim();
+      if (link) {
+        stepsArray.push(`${REFERENCE_LINK_PREFIX}${link}`);
+      }
     }
 
     const thumbnailUrl = imagePreview ?? undefined;
@@ -443,6 +483,21 @@ export function AddCaseModal({
               className="mt-2"
             />
           </div>
+          {formData.category !== "tools" && (
+            <div>
+              <Label htmlFor="referenceLink">参考リンク (任意)</Label>
+              <Input
+                id="referenceLink"
+                value={formData.referenceLink}
+                onChange={(e) => setFormData({ ...formData, referenceLink: e.target.value })}
+                placeholder="例: https://gemini.google.com/gems/xxxx"
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                登録後、詳細画面からワンクリックで開けます
+              </p>
+            </div>
+          )}
 
           {/* Impact */}
           <div>

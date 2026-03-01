@@ -47,7 +47,6 @@ type Category =
   | "prompt"
   | "automation"
   | "tools"
-  | "business"
   | "activation";
 
 type SortOption = "default" | "createdDesc" | "createdAsc" | "updatedDesc";
@@ -63,7 +62,6 @@ const categories = [
   { id: "prompt" as Category, label: "プロンプト集" },
   { id: "automation" as Category, label: "自動化" },
   { id: "tools" as Category, label: "ツール活用" },
-  { id: "business" as Category, label: "業務活用" },
   { id: "activation" as Category, label: "活性化施策" },
 ];
 
@@ -169,12 +167,13 @@ export default function Home() {
       prompt: 0,
       automation: 0,
       tools: 0,
-      business: 0,
       activation: 0,
     };
 
     for (const item of cases) {
-      counts[item.category] += 1;
+      if (item.category in counts) {
+        counts[item.category as Exclude<Category, "all" | "liked">] += 1;
+      }
       if (item.isFavorite) counts.liked += 1;
     }
 
