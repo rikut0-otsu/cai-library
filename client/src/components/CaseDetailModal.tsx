@@ -111,13 +111,15 @@ export function CaseDetailModal({
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-2xl">{caseStudy.title}</DialogTitle>
+        <DialogHeader className="text-left">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2">
+              <DialogTitle className="text-2xl leading-tight break-words">
+                {caseStudy.title}
+              </DialogTitle>
               {isEdited && <Badge variant="outline">編集済み</Badge>}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center justify-end gap-2 shrink-0 sm:self-auto">
               <Button
                 variant="ghost"
                 size="icon"
@@ -171,7 +173,7 @@ export function CaseDetailModal({
               </Button>
             </div>
           </div>
-          <DialogDescription className="text-base">
+          <DialogDescription className="text-base text-left">
             {caseStudy.description}
           </DialogDescription>
           <p className="text-xs text-muted-foreground mt-2">
