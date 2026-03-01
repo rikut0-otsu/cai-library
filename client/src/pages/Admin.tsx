@@ -625,9 +625,10 @@ export default function Admin() {
                       <p className="text-xs text-muted-foreground break-all">{item.openId}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto">
                       <Button
                         variant={item.role === "admin" ? "default" : "outline"}
+                        className="w-full"
                         disabled={
                           item.role === "admin" || isLocked || isPending || isDeletePending
                         }
@@ -637,6 +638,7 @@ export default function Admin() {
                       </Button>
                       <Button
                         variant={item.role === "user" ? "default" : "outline"}
+                        className="w-full"
                         disabled={
                           item.role === "user" || isLocked || isPending || isDeletePending
                         }
@@ -646,6 +648,7 @@ export default function Admin() {
                       </Button>
                       <Button
                         variant="outline"
+                        className="w-full"
                         disabled={isDeleteLocked}
                         onClick={() => handleDeleteUser(item.id, false, labelName)}
                       >
@@ -653,6 +656,7 @@ export default function Admin() {
                       </Button>
                       <Button
                         variant="destructive"
+                        className="w-full"
                         disabled={isDeleteLocked}
                         onClick={() => handleDeleteUser(item.id, true, labelName)}
                       >

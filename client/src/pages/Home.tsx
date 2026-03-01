@@ -160,25 +160,44 @@ export default function Home() {
     });
   }, [cases, searchQuery, activeCategory, sortOption]);
 
+  const zeroCategoryCounts: Record<Category, number> = {
+    all: 0,
+    liked: 0,
+    prompt: 0,
+    automation: 0,
+    tools: 0,
+    activation: 0,
+  };
   const categoryCounts = useMemo(() => {
-    const counts: Record<Category, number> = {
-      all: cases.length,
-      liked: 0,
-      prompt: 0,
-      automation: 0,
-      tools: 0,
-      activation: 0,
-    };
+    const counts: Record<Category, number> = { ...zeroCategoryCounts };
+    counts.all = cases.length;
 
     for (const item of cases) {
-      if (item.category in counts) {
-        counts[item.category as Exclude<Category, "all" | "liked">] += 1;
+      switch (item.category) {
+        case "prompt":
+        case "automation":
+        case "tools":
+        case "activation":
+          counts[item.category] += 1;
+          break;
+        default:
+          break;
       }
       if (item.isFavorite) counts.liked += 1;
     }
 
     return counts;
   }, [cases]);
+  const [stableCategoryCounts, setStableCategoryCounts] =
+    useState<Record<Category, number>>(zeroCategoryCounts);
+  useEffect(() => {
+    if (listQuery.isSuccess) {
+      setStableCategoryCounts(categoryCounts);
+    }
+  }, [listQuery.isSuccess, categoryCounts]);
+  const displayedCategoryCounts = listQuery.isSuccess
+    ? categoryCounts
+    : stableCategoryCounts;
 
   const handleFavoriteClick = async (e: React.MouseEvent, caseId: number) => {
     e.stopPropagation();
@@ -509,13 +528,14 @@ export default function Home() {
                       key={category.id}
                       onClick={() => setActiveCategory(category.id)}
                       variant={isActive ? "default" : "outline"}
-                      className={`rounded-full whitespace-nowrap ${
+                      translate="no"
+                      className={`notranslate rounded-full whitespace-nowrap ${
                         isActive
                           ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md"
                           : ""
                       }`}
                     >
-                      {category.label} ({categoryCounts[category.id] ?? 0})
+                      {category.label} ({displayedCategoryCounts[category.id] ?? 0})
                     </Button>
                   );
                 })}
