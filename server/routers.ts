@@ -166,6 +166,20 @@ export const appRouter = router({
   }),
 
   admin: router({
+    dashboard: router({
+      metrics: adminProcedure
+        .input(
+          z.object({
+            periodDays: z.enum(["7", "30", "90"]).default("7"),
+          })
+        )
+        .query(async ({ input }) => {
+          const metrics = await db.getAdminDashboardMetrics(
+            Number(input.periodDays) as 7 | 30 | 90
+          );
+          return metrics;
+        }),
+    }),
     settings: router({
       getInviteCode: adminProcedure.query(async () => {
         const setting = await db.getAppSetting(INVITE_CODE_SETTING_KEY);
