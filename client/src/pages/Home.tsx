@@ -764,8 +764,14 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-              <div className="rounded-lg border border-blue-400/50 bg-blue-900/40 p-3">
-                <p className="text-xs font-medium text-blue-100/90">投稿タイトル</p>
+              <div
+                className="rounded-lg border p-3"
+                style={{
+                  backgroundColor: "#1e3a8a",
+                  borderColor: "#93c5fd",
+                }}
+              >
+                <p className="text-xs font-semibold text-blue-100">投稿タイトル</p>
                 <p className="mt-1 text-sm font-semibold text-white break-words">
                   {celebrationPayload?.title}
                 </p>
