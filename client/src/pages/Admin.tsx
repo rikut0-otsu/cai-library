@@ -44,7 +44,7 @@ export default function Admin() {
   const [inquiryTab, setInquiryTab] = useState<"open" | "resolved">("open");
   const [inquiryPage, setInquiryPage] = useState(1);
   const [pendingInquiryId, setPendingInquiryId] = useState<number | null>(null);
-  const [dashboardPeriod, setDashboardPeriod] = useState<"7" | "30" | "90">("7");
+  const [dashboardPage, setDashboardPage] = useState(1);
 
   const utils = trpc.useUtils();
   const usersQuery = trpc.admin.users.list.useQuery(undefined, {
@@ -59,13 +59,10 @@ export default function Admin() {
     enabled: isAuthenticated && isAdmin,
     refetchOnWindowFocus: false,
   });
-  const dashboardQuery = trpc.admin.dashboard.metrics.useQuery(
-    { periodDays: dashboardPeriod },
-    {
-      enabled: isAuthenticated && isAdmin,
-      refetchOnWindowFocus: false,
-    }
-  );
+  const dashboardQuery = trpc.admin.dashboard.metrics.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin,
+    refetchOnWindowFocus: false,
+  });
   const setInviteCodeMutation = trpc.admin.settings.setInviteCode.useMutation({
     onSuccess: () => {
       utils.admin.settings.getInviteCode.invalidate();
@@ -100,12 +97,20 @@ export default function Admin() {
   const inquiries = inquiriesQuery.data ?? [];
   const dashboardMetrics = dashboardQuery.data;
   const popularCaseStudies = dashboardMetrics?.popularCaseStudies ?? [];
-  const newUsersCurrent = dashboardMetrics?.newUsers.current ?? 0;
-  const newUsersPrevious = dashboardMetrics?.newUsers.previous ?? 0;
-  const newUsersDiff = newUsersCurrent - newUsersPrevious;
-  const revisitRate = dashboardMetrics?.revisitRate.rate ?? 0;
-  const revisitRetained = dashboardMetrics?.revisitRate.retained ?? 0;
-  const revisitTotal = dashboardMetrics?.revisitRate.total ?? 0;
+  const dashboardTotals = dashboardMetrics?.totals ?? {
+    users: 0,
+    caseStudies: 0,
+    favorites: 0,
+  };
+  const dashboardPageSize = 5;
+  const dashboardTotalPages = Math.max(
+    1,
+    Math.ceil(popularCaseStudies.length / dashboardPageSize)
+  );
+  const pagedPopularCaseStudies = useMemo(() => {
+    const start = (dashboardPage - 1) * dashboardPageSize;
+    return popularCaseStudies.slice(start, start + dashboardPageSize);
+  }, [popularCaseStudies, dashboardPage]);
 
   useEffect(() => {
     setInviteCode(currentInviteCode);
@@ -186,6 +191,9 @@ export default function Admin() {
   useEffect(() => {
     setUserPage((prev) => Math.min(prev, userTotalPages));
   }, [userTotalPages]);
+  useEffect(() => {
+    setDashboardPage((prev) => Math.min(prev, dashboardTotalPages));
+  }, [dashboardTotalPages]);
 
   const handleRoleChange = async (userId: number, role: Role) => {
     try {
@@ -461,64 +469,47 @@ export default function Admin() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle>ダッシュボード</CardTitle>
-              <CardDescription>
-                人気投稿（お気に入り数）とユーザー推移を確認できます。
-              </CardDescription>
-            </div>
-            <div className="w-full md:w-40">
-              <Select value={dashboardPeriod} onValueChange={(value) => setDashboardPeriod(value as "7" | "30" | "90")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="期間を選択" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">直近7日</SelectItem>
-                  <SelectItem value="30">直近30日</SelectItem>
-                  <SelectItem value="90">直近90日</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CardTitle>ダッシュボード</CardTitle>
+          <CardDescription>
+            人気投稿ランキングと全体のお気に入り数を確認できます。
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {dashboardQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">ダッシュボードを取得中...</p>
           ) : (
             <>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-lg border border-border p-4 space-y-1">
-                  <p className="text-xs text-muted-foreground">新規登録（直近{dashboardPeriod}日）</p>
-                  <p className="text-2xl font-semibold">{newUsersCurrent} 人</p>
-                  <p className="text-xs text-muted-foreground">
-                    前期間比 {newUsersDiff > 0 ? "+" : ""}
-                    {newUsersDiff}（前期間: {newUsersPrevious} 人）
-                  </p>
+                  <p className="text-xs text-muted-foreground">総お気に入り数</p>
+                  <p className="text-2xl font-semibold">{dashboardTotals.favorites}</p>
                 </div>
                 <div className="rounded-lg border border-border p-4 space-y-1">
-                  <p className="text-xs text-muted-foreground">再訪率（直近{dashboardPeriod}日登録ユーザー）</p>
-                  <p className="text-2xl font-semibold">{(revisitRate * 100).toFixed(1)}%</p>
-                  <p className="text-xs text-muted-foreground">
-                    再訪 {revisitRetained} / 対象 {revisitTotal}
-                  </p>
+                  <p className="text-xs text-muted-foreground">投稿数</p>
+                  <p className="text-2xl font-semibold">{dashboardTotals.caseStudies}</p>
+                </div>
+                <div className="rounded-lg border border-border p-4 space-y-1">
+                  <p className="text-xs text-muted-foreground">登録ユーザー数</p>
+                  <p className="text-2xl font-semibold">{dashboardTotals.users} 人</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium">人気投稿ランキング（お気に入り数）</p>
-                  <p className="text-xs text-muted-foreground">最大10件</p>
+                  <p className="text-xs text-muted-foreground">
+                    {popularCaseStudies.length} 件中
+                  </p>
                 </div>
                 {popularCaseStudies.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">対象期間の人気投稿データはありません。</p>
+                  <p className="text-sm text-muted-foreground">人気投稿データはありません。</p>
                 ) : (
                   <div className="space-y-2">
-                    {popularCaseStudies.map((item, index) => (
+                    {pagedPopularCaseStudies.map((item, index) => (
                       <div key={item.id} className="rounded-lg border border-border p-3 flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {index + 1}. {item.title}
+                            {(dashboardPage - 1) * dashboardPageSize + index + 1}. {item.title}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
                             投稿者: {item.authorName} / {new Date(item.createdAt).toLocaleDateString("ja-JP")}
@@ -527,6 +518,31 @@ export default function Admin() {
                         <Badge variant="outline">{item.favoriteCount} お気に入り</Badge>
                       </div>
                     ))}
+                    {dashboardTotalPages > 1 && (
+                      <div className="pt-2 flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={dashboardPage <= 1}
+                          onClick={() => setDashboardPage((prev) => Math.max(1, prev - 1))}
+                        >
+                          前へ
+                        </Button>
+                        <p className="text-xs text-muted-foreground min-w-16 text-center">
+                          {dashboardPage} / {dashboardTotalPages}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={dashboardPage >= dashboardTotalPages}
+                          onClick={() =>
+                            setDashboardPage((prev) => Math.min(dashboardTotalPages, prev + 1))
+                          }
+                        >
+                          次へ
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

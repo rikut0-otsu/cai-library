@@ -142,12 +142,11 @@ export async function getAllUsers() {
     .orderBy(desc(users.createdAt));
 }
 
-export async function getAdminDashboardMetrics(rangeDays: 7 | 30 | 90 = 7) {
+export async function getAdminDashboardMetrics() {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get admin dashboard metrics: database not available");
     return {
-      periodDays: rangeDays,
       popularCaseStudies: [] as Array<{
         id: number;
         title: string;
@@ -156,24 +155,13 @@ export async function getAdminDashboardMetrics(rangeDays: 7 | 30 | 90 = 7) {
         favoriteCount: number;
         authorName: string;
       }>,
-      newUsers: {
-        current: 0,
-        previous: 0,
-      },
-      revisitRate: {
-        rate: 0,
-        retained: 0,
-        total: 0,
+      totals: {
+        users: 0,
+        caseStudies: 0,
+        favorites: 0,
       },
     };
   }
-
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const rangeMs = rangeDays * dayMs;
-  const periodStart = now - rangeMs;
-  const prevPeriodStart = periodStart - rangeMs;
-  const revisitThresholdMs = dayMs;
 
   const favoriteCountExpr = sql<number>`cast(count(${favorites.id}) as integer)`;
 
@@ -188,13 +176,7 @@ export async function getAdminDashboardMetrics(rangeDays: 7 | 30 | 90 = 7) {
     })
     .from(caseStudies)
     .leftJoin(users, eq(caseStudies.userId, users.id))
-    .leftJoin(
-      favorites,
-      and(
-        eq(favorites.caseStudyId, caseStudies.id),
-        sql`${favorites.createdAt} >= ${periodStart}`
-      )
-    )
+    .leftJoin(favorites, eq(favorites.caseStudyId, caseStudies.id))
     .groupBy(
       caseStudies.id,
       caseStudies.title,
@@ -202,49 +184,27 @@ export async function getAdminDashboardMetrics(rangeDays: 7 | 30 | 90 = 7) {
       caseStudies.createdAt,
       users.name
     )
-    .orderBy(desc(favoriteCountExpr), desc(caseStudies.createdAt))
-    .limit(10);
+    .orderBy(desc(favoriteCountExpr), desc(caseStudies.createdAt));
 
-  const [{ count: newUsersCurrentRaw }] = await db
+  const [{ count: usersRaw }] = await db
     .select({
       count: sql<number>`cast(count(*) as integer)`,
     })
-    .from(users)
-    .where(sql`${users.createdAt} >= ${periodStart} and ${users.createdAt} < ${now}`);
+    .from(users);
 
-  const [{ count: newUsersPrevRaw }] = await db
+  const [{ count: caseStudiesRaw }] = await db
     .select({
       count: sql<number>`cast(count(*) as integer)`,
     })
-    .from(users)
-    .where(
-      sql`${users.createdAt} >= ${prevPeriodStart} and ${users.createdAt} < ${periodStart}`
-    );
+    .from(caseStudies);
 
-  const [{ count: revisitTotalRaw }] = await db
+  const [{ count: favoritesRaw }] = await db
     .select({
       count: sql<number>`cast(count(*) as integer)`,
     })
-    .from(users)
-    .where(sql`${users.createdAt} >= ${periodStart} and ${users.createdAt} < ${now}`);
-
-  const [{ count: revisitRetainedRaw }] = await db
-    .select({
-      count: sql<number>`cast(count(*) as integer)`,
-    })
-    .from(users)
-    .where(
-      sql`${users.createdAt} >= ${periodStart} and ${users.createdAt} < ${now} and (${users.lastSignedIn} - ${users.createdAt}) >= ${revisitThresholdMs}`
-    );
-
-  const newUsersCurrent = Number(newUsersCurrentRaw ?? 0);
-  const newUsersPrevious = Number(newUsersPrevRaw ?? 0);
-  const revisitTotal = Number(revisitTotalRaw ?? 0);
-  const revisitRetained = Number(revisitRetainedRaw ?? 0);
-  const revisitRate = revisitTotal > 0 ? revisitRetained / revisitTotal : 0;
+    .from(favorites);
 
   return {
-    periodDays: rangeDays,
     popularCaseStudies: popularRows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -253,14 +213,10 @@ export async function getAdminDashboardMetrics(rangeDays: 7 | 30 | 90 = 7) {
       favoriteCount: Number(row.favoriteCount ?? 0),
       authorName: row.authorName ?? "不明",
     })),
-    newUsers: {
-      current: newUsersCurrent,
-      previous: newUsersPrevious,
-    },
-    revisitRate: {
-      rate: revisitRate,
-      retained: revisitRetained,
-      total: revisitTotal,
+    totals: {
+      users: Number(usersRaw ?? 0),
+      caseStudies: Number(caseStudiesRaw ?? 0),
+      favorites: Number(favoritesRaw ?? 0),
     },
   };
 }

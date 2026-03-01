@@ -167,16 +167,8 @@ export const appRouter = router({
 
   admin: router({
     dashboard: router({
-      metrics: adminProcedure
-        .input(
-          z.object({
-            periodDays: z.enum(["7", "30", "90"]).default("7"),
-          })
-        )
-        .query(async ({ input }) => {
-          const metrics = await db.getAdminDashboardMetrics(
-            Number(input.periodDays) as 7 | 30 | 90
-          );
+      metrics: adminProcedure.query(async () => {
+          const metrics = await db.getAdminDashboardMetrics();
           return metrics;
         }),
     }),
