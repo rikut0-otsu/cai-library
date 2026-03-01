@@ -119,7 +119,7 @@ export function CaseDetailModal({
               </DialogTitle>
               {isEdited && <Badge variant="outline">編集済み</Badge>}
             </div>
-            <div className="flex items-center justify-end gap-2 shrink-0 sm:self-auto">
+            <div className="hidden items-center justify-end gap-2 shrink-0 sm:flex sm:self-auto">
               <Button
                 variant="ghost"
                 size="icon"
@@ -176,24 +176,85 @@ export function CaseDetailModal({
           <DialogDescription className="text-base text-left">
             {caseStudy.description}
           </DialogDescription>
-          <p className="text-xs text-muted-foreground mt-2">
-            作成者:
-            <button
-              type="button"
-              onClick={() => onAuthorClick(caseStudy.userId)}
-              className="ml-1 underline underline-offset-2 hover:text-foreground"
-            >
-              {caseStudy.authorName || "不明"}
-            </button>
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            投稿日: {formatDateTime(caseStudy.createdAt)}
-          </p>
-          {isEdited && (
-            <p className="text-xs text-muted-foreground mt-1">
-              編集日: {formatDateTime(caseStudy.updatedAt)}
-            </p>
-          )}
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                作成者:
+                <button
+                  type="button"
+                  onClick={() => onAuthorClick(caseStudy.userId)}
+                  className="ml-1 underline underline-offset-2 hover:text-foreground"
+                >
+                  {caseStudy.authorName || "不明"}
+                </button>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                投稿日: {formatDateTime(caseStudy.createdAt)}
+              </p>
+              {isEdited && (
+                <p className="text-xs text-muted-foreground">
+                  編集日: {formatDateTime(caseStudy.updatedAt)}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1 sm:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleFavoriteClick}
+                aria-label="Toggle favorite"
+              >
+                <Heart
+                  className={`w-4 h-4 ${
+                    caseStudy.isFavorite ? "fill-red-500 text-red-500" : ""
+                  }`}
+                />
+              </Button>
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleEditClick}
+                  aria-label="Edit case study"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={handleDeleteClick}
+                  aria-label="Delete case study"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+              {canPin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handlePinClick}
+                  aria-label="Pin case study to top"
+                >
+                  <Pin className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleShareClick}
+                aria-label="Share case study"
+              >
+                <Share2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
