@@ -764,9 +764,12 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-lg border bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 p-3">
-              <p className="text-sm font-medium break-words">{celebrationPayload?.title}</p>
-            </div>
+              <div className="rounded-lg border border-blue-400/50 bg-blue-900/40 p-3">
+                <p className="text-xs font-medium text-blue-100/90">投稿タイトル</p>
+                <p className="mt-1 text-sm font-semibold text-white break-words">
+                  {celebrationPayload?.title}
+                </p>
+              </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
                 onClick={() => {
