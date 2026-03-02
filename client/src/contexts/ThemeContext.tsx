@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
+const THEME_KEY = "theme";
+const THEME_USER_SET_KEY = "theme_user_set";
 
 interface ThemeContextType {
   theme: Theme;
@@ -22,9 +24,12 @@ export function ThemeProvider({
   switchable = false,
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+    if (switchable && typeof window !== "undefined") {
+      const userSet = localStorage.getItem(THEME_USER_SET_KEY) === "1";
+      const stored = localStorage.getItem(THEME_KEY);
+      if (userSet && (stored === "light" || stored === "dark")) {
+        return stored;
+      }
     }
     return defaultTheme;
   });
@@ -37,14 +42,21 @@ export function ThemeProvider({
       root.classList.remove("dark");
     }
 
-    if (switchable) {
-      localStorage.setItem("theme", theme);
+    if (switchable && typeof window !== "undefined") {
+      localStorage.setItem(THEME_KEY, theme);
     }
   }, [theme, switchable]);
 
   const toggleTheme = switchable
     ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
+        setTheme(prev => {
+          const next = prev === "light" ? "dark" : "light";
+          if (typeof window !== "undefined") {
+            localStorage.setItem(THEME_USER_SET_KEY, "1");
+            localStorage.setItem(THEME_KEY, next);
+          }
+          return next;
+        });
       }
     : undefined;
 
