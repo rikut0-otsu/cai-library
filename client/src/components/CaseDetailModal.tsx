@@ -173,7 +173,7 @@ export function CaseDetailModal({
               </Button>
             </div>
           </div>
-          <DialogDescription className="text-base text-left">
+          <DialogDescription className="text-base text-left whitespace-pre-wrap break-words">
             {caseStudy.description}
           </DialogDescription>
           <div className="mt-2 flex items-start justify-between gap-3">
@@ -284,13 +284,17 @@ export function CaseDetailModal({
           {/* Challenge */}
           <div>
             <h3 className="font-semibold text-lg mb-2">解決したい課題</h3>
-            <p className="text-foreground leading-relaxed">{caseStudy.challenge}</p>
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words">
+              {caseStudy.challenge}
+            </p>
           </div>
 
           {/* Solution */}
           <div>
             <h3 className="font-semibold text-lg mb-2">解決策</h3>
-            <p className="text-foreground leading-relaxed">{caseStudy.solution}</p>
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words">
+              {caseStudy.solution}
+            </p>
           </div>
 
           {/* Steps / Category-specific field */}
@@ -404,7 +408,7 @@ export function CaseDetailModal({
           {caseStudy.impact && (
             <div>
               <h3 className="font-semibold text-lg mb-2">効果・インパクト</h3>
-              <p className="text-foreground leading-relaxed font-medium text-purple-600">
+              <p className="text-foreground leading-relaxed font-medium text-purple-600 whitespace-pre-wrap break-words">
                 {caseStudy.impact}
               </p>
             </div>
