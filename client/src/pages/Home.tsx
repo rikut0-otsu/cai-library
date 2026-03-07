@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Share2, Sparkles, Sun, User } from "lucide-react";
+import { ChevronDown, Heart, LogOut, Moon, Pencil, Plus, Repeat, Search, Share2, Sparkles, Sun, Upload, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AddCaseModal } from "@/components/AddCaseModal";
@@ -94,11 +94,13 @@ export default function Home() {
   const [hasDismissedProfilePrompt, setHasDismissedProfilePrompt] = useState(false);
   const [profilePromptName, setProfilePromptName] = useState("");
   const [profilePromptDepartmentRole, setProfilePromptDepartmentRole] = useState("");
+  const [profilePromptAvatarPreview, setProfilePromptAvatarPreview] = useState<string | null>(null);
   const { theme, toggleTheme, switchable } = useTheme();
   const profilePromptQuery = trpc.profile.me.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchOnWindowFocus: false,
   });
+  const uploadProfilePromptAvatarMutation = trpc.profile.uploadAvatar.useMutation();
   const updateProfilePromptMutation = trpc.profile.update.useMutation({
     onSuccess: async () => {
       toast.success("プロフィールを保存しました");
@@ -433,10 +435,86 @@ export default function Home() {
     setProfilePromptName(profilePromptQuery.data.user.name ?? "");
     const departmentRole = (profilePromptQuery.data.user.departmentRole ?? "").trim();
     setProfilePromptDepartmentRole(departmentRole);
+    setProfilePromptAvatarPreview(profilePromptQuery.data.user.avatarUrl || null);
     if (!departmentRole) {
       setIsProfilePromptOpen(true);
     }
   }, [isAuthenticated, hasDismissedProfilePrompt, profilePromptQuery.data?.user]);
+
+  const readFileAsDataUrl = (file: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Failed to read image."));
+      reader.readAsDataURL(file);
+    });
+
+  const loadImage = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Failed to load image."));
+      img.src = src;
+    });
+
+  const compressProfilePromptImage = async (file: File) => {
+    const MAX_AVATAR_WIDTH = 512;
+    const MAX_AVATAR_HEIGHT = 512;
+    const JPEG_QUALITY = 0.82;
+
+    const originalDataUrl = await readFileAsDataUrl(file);
+    const img = await loadImage(originalDataUrl);
+    const scale = Math.min(
+      1,
+      MAX_AVATAR_WIDTH / img.width,
+      MAX_AVATAR_HEIGHT / img.height
+    );
+    const targetWidth = Math.max(1, Math.round(img.width * scale));
+    const targetHeight = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get canvas context.");
+    }
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY);
+    });
+    if (!blob) {
+      throw new Error("Failed to compress image.");
+    }
+    return readFileAsDataUrl(blob);
+  };
+
+  const extractBase64Data = (dataUrl: string) => {
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex < 0) throw new Error("Invalid data URL.");
+    return dataUrl.slice(commaIndex + 1);
+  };
+
+  const handleProfilePromptAvatarChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("画像ファイルを選択してください");
+      return;
+    }
+
+    try {
+      const compressedDataUrl = await compressProfilePromptImage(file);
+      setProfilePromptAvatarPreview(compressedDataUrl);
+    } catch (error) {
+      console.error(error);
+      toast.error("画像の圧縮に失敗しました");
+    } finally {
+      e.target.value = "";
+    }
+  };
 
   const handleSaveProfilePrompt = async () => {
     const trimmedName = profilePromptName.trim();
@@ -450,10 +528,24 @@ export default function Home() {
       return;
     }
     try {
+      let avatarUrlToSave = profilePromptAvatarPreview || "";
+      if (profilePromptAvatarPreview?.startsWith("data:")) {
+        try {
+          const uploaded = await uploadProfilePromptAvatarMutation.mutateAsync({
+            filename: "avatar.jpg",
+            contentType: "image/jpeg",
+            base64Data: extractBase64Data(profilePromptAvatarPreview),
+          });
+          avatarUrlToSave = uploaded.url;
+        } catch (uploadError) {
+          console.error(uploadError);
+          avatarUrlToSave = profilePromptAvatarPreview;
+        }
+      }
       await updateProfilePromptMutation.mutateAsync({
         name: trimmedName,
         departmentRole: trimmedDepartmentRole,
-        avatarUrl: profilePromptQuery.data?.user.avatarUrl ?? "",
+        avatarUrl: avatarUrlToSave,
       });
     } catch (error) {
       console.error(error);
@@ -937,6 +1029,40 @@ export default function Home() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label>プロフィール画像</Label>
+              <div className="flex items-center gap-3">
+                <Avatar className="size-14 border">
+                  <AvatarImage src={profilePromptAvatarPreview ?? undefined} alt="プロフィール画像" />
+                  <AvatarFallback>{(profilePromptName || "U").slice(0, 1).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    id="profile-prompt-avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfilePromptAvatarChange}
+                  />
+                  <label htmlFor="profile-prompt-avatar-upload">
+                    <Button type="button" variant="outline" asChild>
+                      <span className="inline-flex items-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        画像を選択
+                      </span>
+                    </Button>
+                  </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setProfilePromptAvatarPreview(null)}
+                    disabled={!profilePromptAvatarPreview}
+                  >
+                    画像を削除
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="profile-prompt-name">名前</Label>
               <Input
                 id="profile-prompt-name"
@@ -959,9 +1085,14 @@ export default function Home() {
             <Button
               className="w-full"
               onClick={handleSaveProfilePrompt}
-              disabled={updateProfilePromptMutation.isPending}
+              disabled={
+                updateProfilePromptMutation.isPending ||
+                uploadProfilePromptAvatarMutation.isPending
+              }
             >
-              {updateProfilePromptMutation.isPending ? "保存中..." : "入力して設定する"}
+              {updateProfilePromptMutation.isPending || uploadProfilePromptAvatarMutation.isPending
+                ? "保存中..."
+                : "入力して設定する"}
             </Button>
             <button
               type="button"
