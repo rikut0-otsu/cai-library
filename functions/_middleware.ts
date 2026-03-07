@@ -79,9 +79,7 @@ export const onRequest = async (context: PagesContext) => {
   const authorName = (caseStudy.authorName ?? "だれか").trim() || "だれか";
   const title = `${authorName}さんが、${caseStudy.title}を追加しました！チェックしよう！`;
   const description = (caseStudy.description ?? "").trim() || DEFAULT_DESCRIPTION;
-  const imageUrl = caseStudy.thumbnailUrl
-    ? new URL(caseStudy.thumbnailUrl, url.origin).toString()
-    : new URL("/logo1.png", url.origin).toString();
+  const imageUrl = new URL(`/api/og-image?caseId=${caseStudy.id}`, url.origin).toString();
   const pageUrl = `${url.origin}/?caseId=${caseStudy.id}`;
 
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);

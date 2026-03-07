@@ -56,6 +56,7 @@ type SharePayload = {
   title: string;
   authorName: string;
   thumbnailUrl?: string;
+  previewVersion?: number;
 };
 
 const categories = [
@@ -141,7 +142,11 @@ export default function Home() {
     (selectedCase?.userId === user?.id || user?.role === "admin");
   const canPinSelected = Boolean(selectedCase) && Boolean(user?.isOwner);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = sharePayload ? `${origin}/?caseId=${sharePayload.id}` : "";
+  const shareUrl = sharePayload
+    ? `${origin}/?caseId=${sharePayload.id}${
+        sharePayload.previewVersion ? `&v=${sharePayload.previewVersion}` : ""
+      }`
+    : "";
   const shareMessage = sharePayload
     ? `${sharePayload.authorName}さんが、${sharePayload.title}を追加しました！チェックしよう！`
     : "";
@@ -289,12 +294,14 @@ export default function Home() {
   const buildSharePayload = (caseId: number): SharePayload | null => {
     const found = cases.find((item) => item.id === caseId);
     if (!found) return null;
-    return {
-      id: found.id,
-      title: found.title,
-      authorName: found.authorName || "だれか",
-      thumbnailUrl: found.thumbnailUrl || undefined,
-    };
+      return {
+        id: found.id,
+        title: found.title,
+        authorName: found.authorName || "だれか",
+        thumbnailUrl: found.thumbnailUrl || undefined,
+        previewVersion:
+          (typeof found.updatedAt === "number" ? found.updatedAt : found.createdAt) || Date.now(),
+      };
   };
   const openCaseDetail = (caseId: number) => {
     const url = new URL(window.location.href);
@@ -899,6 +906,7 @@ export default function Home() {
                   title: result.title,
                   authorName: (user?.name ?? "").trim() || "だれか",
                   thumbnailUrl: result.thumbnailUrl,
+                  previewVersion: Date.now(),
                 };
                 setCelebrationPayload(payload);
                 setIsCelebrationModalOpen(true);
