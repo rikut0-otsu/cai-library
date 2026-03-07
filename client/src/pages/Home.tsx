@@ -893,15 +893,16 @@ export default function Home() {
           onSuccess={(result) => {
             setIsAddModalOpen(false);
             utils.caseStudies.list.invalidate();
-            if (result.mode === "create" && result.id) {
-              const payload: SharePayload = {
-                id: result.id,
-                title: result.title,
-                authorName: (user?.name ?? "").trim() || "だれか",
-              };
-              setCelebrationPayload(payload);
-              setIsCelebrationModalOpen(true);
-            }
+              if (result.mode === "create" && result.id) {
+                const payload: SharePayload = {
+                  id: result.id,
+                  title: result.title,
+                  authorName: (user?.name ?? "").trim() || "だれか",
+                  thumbnailUrl: result.thumbnailUrl,
+                };
+                setCelebrationPayload(payload);
+                setIsCelebrationModalOpen(true);
+              }
           }}
         />
       )}
