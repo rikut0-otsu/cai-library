@@ -275,6 +275,17 @@ export async function getAllCaseStudies() {
   const db = await getDb();
   if (!db) return [];
   
+  const favoriteCounts = await db
+    .select({
+      caseStudyId: favorites.caseStudyId,
+      favoriteCount: sql<number>`cast(count(${favorites.id}) as integer)`,
+    })
+    .from(favorites)
+    .groupBy(favorites.caseStudyId);
+  const favoriteCountMap = new Map<number, number>(
+    favoriteCounts.map((item) => [item.caseStudyId, Number(item.favoriteCount ?? 0)])
+  );
+
   const result = await db
     .select({
       caseStudy: caseStudies,
@@ -293,6 +304,7 @@ export async function getAllCaseStudies() {
     authorAvatarUrl: item.authorAvatarUrl,
     authorRole: item.authorRole,
     authorIsOwner: item.authorOpenId === ENV.ownerOpenId,
+    favoriteCount: favoriteCountMap.get(item.caseStudy.id) ?? 0,
   }));
 }
 
@@ -314,12 +326,19 @@ export async function getCaseStudyById(id: number) {
     .where(eq(caseStudies.id, id))
     .limit(1);
   if (result.length === 0) return undefined;
+  const [{ count: favoriteCountRaw }] = await db
+    .select({
+      count: sql<number>`cast(count(*) as integer)`,
+    })
+    .from(favorites)
+    .where(eq(favorites.caseStudyId, id));
   return {
     ...result[0].caseStudy,
     authorName: result[0].authorName,
     authorAvatarUrl: result[0].authorAvatarUrl,
     authorRole: result[0].authorRole,
     authorIsOwner: result[0].authorOpenId === ENV.ownerOpenId,
+    favoriteCount: Number(favoriteCountRaw ?? 0),
   };
 }
 

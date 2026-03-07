@@ -44,6 +44,7 @@ import {
 
 type Category =
   | "all"
+  | "hot"
   | "liked"
   | "prompt"
   | "automation"
@@ -71,6 +72,7 @@ const SEARCH_HISTORY_MAX = 8;
 
 const categories = [
   { id: "all" as Category, label: "ALL" },
+  { id: "hot" as Category, label: "🔥Hot" },
   { id: "liked" as Category, label: "❤️お気に入り" },
   { id: "prompt" as Category, label: "プロンプト集" },
   { id: "automation" as Category, label: "自動化" },
@@ -251,6 +253,24 @@ export default function Home() {
     registerSearchHistory(value);
     setIsSearchFocused(false);
   };
+  const getFavoriteCount = (item: CaseStudy) =>
+    Number((item as CaseStudy & { favoriteCount?: number }).favoriteCount ?? 0);
+  const hotCases = useMemo(() => {
+    return [...cases]
+      .filter((item) => getFavoriteCount(item) >= 1)
+      .sort((a, b) => {
+        const aCount = getFavoriteCount(a);
+        const bCount = getFavoriteCount(b);
+        if (aCount !== bCount) return bCount - aCount;
+        return b.createdAt - a.createdAt;
+      })
+      .slice(0, 6);
+  }, [cases]);
+  const hotCaseRank = useMemo(
+    () => new Map<number, number>(hotCases.map((item, index) => [item.id, index])),
+    [hotCases]
+  );
+  const hotCaseIds = useMemo(() => new Set(hotCases.map((item) => item.id)), [hotCases]);
 
   const filteredCases = useMemo(() => {
     const keyword = searchQuery.trim().toLowerCase();
@@ -268,9 +288,21 @@ export default function Home() {
           : false);
       const matchesCategory =
         activeCategory === "all" ||
-        (activeCategory === "liked" ? c.isFavorite : c.category === activeCategory);
+        (activeCategory === "hot"
+          ? hotCaseIds.has(c.id)
+          : activeCategory === "liked"
+            ? c.isFavorite
+            : c.category === activeCategory);
       return matchesSearch && matchesCategory;
     });
+
+    if (activeCategory === "hot") {
+      return filtered.sort((a, b) => {
+        const aRank = hotCaseRank.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+        const bRank = hotCaseRank.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+        return aRank - bRank;
+      });
+    }
 
     return filtered.sort((a, b) => {
       if (a.isPinned !== b.isPinned) {
@@ -296,10 +328,11 @@ export default function Home() {
       }
       return b.createdAt - a.createdAt;
     });
-  }, [cases, searchQuery, activeCategory, sortOption]);
+  }, [cases, searchQuery, activeCategory, sortOption, hotCaseIds, hotCaseRank]);
 
   const zeroCategoryCounts: Record<Category, number> = {
     all: 0,
+    hot: 0,
     liked: 0,
     prompt: 0,
     automation: 0,
@@ -309,6 +342,7 @@ export default function Home() {
   const categoryCounts = useMemo(() => {
     const counts: Record<Category, number> = { ...zeroCategoryCounts };
     counts.all = cases.length;
+    counts.hot = hotCases.length;
 
     for (const item of cases) {
       switch (item.category) {
@@ -325,7 +359,7 @@ export default function Home() {
     }
 
     return counts;
-  }, [cases]);
+  }, [cases, hotCases.length]);
   const [stableCategoryCounts, setStableCategoryCounts] =
     useState<Record<Category, number>>(zeroCategoryCounts);
   useEffect(() => {
@@ -1013,6 +1047,11 @@ export default function Home() {
         ) : (
           <div className="text-center py-20">
             <p className="text-muted-foreground text-lg">該当する事例が見つかりませんでした</p>
+            {activeCategory === "liked" && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                あなたが登録したお気に入りのみが反映されます
+              </p>
+            )}
           </div>
         )}
       </main>
