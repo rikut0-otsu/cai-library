@@ -89,7 +89,13 @@ export default function Home() {
   const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
   const [isCelebrationModalOpen, setIsCelebrationModalOpen] = useState(false);
   const [celebrationPayload, setCelebrationPayload] = useState<SharePayload | null>(null);
+  const [isProfilePromptOpen, setIsProfilePromptOpen] = useState(false);
+  const [hasDismissedProfilePrompt, setHasDismissedProfilePrompt] = useState(false);
   const { theme, toggleTheme, switchable } = useTheme();
+  const profilePromptQuery = trpc.profile.me.useQuery(undefined, {
+    enabled: isAuthenticated,
+    refetchOnWindowFocus: false,
+  });
   const toggleFavoriteMutation = trpc.caseStudies.toggleFavorite.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
   });
@@ -399,6 +405,21 @@ export default function Home() {
     if (!exists) return;
     setSelectedCaseId(caseId);
   }, [cases]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsProfilePromptOpen(false);
+      setHasDismissedProfilePrompt(false);
+      return;
+    }
+    if (hasDismissedProfilePrompt) return;
+    if (!profilePromptQuery.data?.user) return;
+
+    const departmentRole = (profilePromptQuery.data.user.departmentRole ?? "").trim();
+    if (!departmentRole) {
+      setIsProfilePromptOpen(true);
+    }
+  }, [isAuthenticated, hasDismissedProfilePrompt, profilePromptQuery.data?.user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -856,6 +877,45 @@ export default function Home() {
                 送信
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isProfilePromptOpen}
+        onOpenChange={(open) => {
+          setIsProfilePromptOpen(open);
+          if (!open) setHasDismissedProfilePrompt(true);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>プロフィール設定のお願い</DialogTitle>
+            <DialogDescription>
+              メンバーが事例を見つけやすくなるように、部署・職種の設定をお願いします。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button
+              className="w-full"
+              onClick={() => {
+                setIsProfilePromptOpen(false);
+                setHasDismissedProfilePrompt(true);
+                setLocation("/profile");
+              }}
+            >
+              プロフィールを設定する
+            </Button>
+            <button
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setIsProfilePromptOpen(false);
+                setHasDismissedProfilePrompt(true);
+              }}
+            >
+              スキップする
+            </button>
           </div>
         </DialogContent>
       </Dialog>
