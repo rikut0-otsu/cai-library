@@ -58,6 +58,16 @@ type SharePayload = {
   thumbnailUrl?: string;
   previewVersion?: number;
 };
+type SearchSuggestionKind = "history" | "user" | "tag" | "tool" | "title";
+
+type SearchSuggestion = {
+  value: string;
+  label: string;
+  kind: SearchSuggestionKind;
+};
+
+const SEARCH_HISTORY_KEY = "cai_search_history_v1";
+const SEARCH_HISTORY_MAX = 8;
 
 const categories = [
   { id: "all" as Category, label: "ALL" },
@@ -80,6 +90,8 @@ export default function Home() {
   const cases: CaseStudy[] = listQuery.data ?? [];
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>("default");
   const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
   const [profileUserId, setProfileUserId] = useState<number | null>(null);
@@ -152,11 +164,108 @@ export default function Home() {
     : "";
   const shareText = sharePayload ? `${shareMessage}\n${shareUrl}` : "";
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      setSearchHistory(
+        parsed
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, SEARCH_HISTORY_MAX)
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
+
+  const persistSearchHistory = (next: string[]) => {
+    setSearchHistory(next);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const registerSearchHistory = (rawValue: string) => {
+    const value = rawValue.trim();
+    if (!value) return;
+    const next = [value, ...searchHistory.filter((item) => item !== value)].slice(
+      0,
+      SEARCH_HISTORY_MAX
+    );
+    persistSearchHistory(next);
+  };
+
+  const clearSearchHistory = () => {
+    persistSearchHistory([]);
+  };
+
+  const searchSuggestions = useMemo<SearchSuggestion[]>(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+    const collected: SearchSuggestion[] = [];
+    const seen = new Set<string>();
+    const push = (value: string, kind: SearchSuggestionKind, labelPrefix = "") => {
+      const normalized = value.trim();
+      if (!normalized) return;
+      const key = normalized.toLowerCase();
+      if (seen.has(key)) return;
+      if (keyword && !key.includes(keyword)) return;
+      seen.add(key);
+      collected.push({
+        value: normalized,
+        label: labelPrefix ? `${labelPrefix} ${normalized}` : normalized,
+        kind,
+      });
+    };
+
+    for (const history of searchHistory) {
+      push(history, "history", "履歴");
+    }
+    for (const item of cases) {
+      push(item.authorName || "", "user", "ユーザー");
+    }
+    for (const item of cases) {
+      for (const tool of Array.isArray(item.tools) ? item.tools : []) {
+        push(String(tool), "tool", "ツール");
+      }
+      for (const tag of Array.isArray(item.tags) ? item.tags : []) {
+        push(String(tag), "tag", "タグ");
+      }
+    }
+    for (const item of cases) {
+      push(item.title || "", "title", "事例");
+    }
+
+    return collected.slice(0, SEARCH_HISTORY_MAX);
+  }, [cases, searchHistory, searchQuery]);
+
+  const applySearchSuggestion = (value: string) => {
+    setSearchQuery(value);
+    registerSearchHistory(value);
+    setIsSearchFocused(false);
+  };
+
   const filteredCases = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
     const filtered = cases.filter((c) => {
       const matchesSearch =
-        c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.description.toLowerCase().includes(searchQuery.toLowerCase());
+        keyword.length === 0 ||
+        c.title.toLowerCase().includes(keyword) ||
+        c.description.toLowerCase().includes(keyword) ||
+        (c.authorName || "").toLowerCase().includes(keyword) ||
+        (Array.isArray(c.tools)
+          ? c.tools.some((tool: string) => tool.toLowerCase().includes(keyword))
+          : false) ||
+        (Array.isArray(c.tags)
+          ? c.tags.some((tag: string) => tag.toLowerCase().includes(keyword))
+          : false);
       const matchesCategory =
         activeCategory === "all" ||
         (activeCategory === "liked" ? c.isFavorite : c.category === activeCategory);
@@ -603,11 +712,48 @@ export default function Home() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="検索する"
+                  placeholder="事例・ユーザー・タグ・ツールで検索"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 120)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      registerSearchHistory(searchQuery);
+                    }
+                  }}
                   className="w-full pl-12 pr-4 py-2.5 md:py-3 bg-muted border-border rounded-full"
                 />
+                {isSearchFocused && searchSuggestions.length > 0 && (
+                  <div className="absolute z-20 mt-2 w-full rounded-2xl border border-border bg-background p-2 shadow-lg">
+                    <div className="mb-1 flex items-center justify-between px-2 text-xs text-muted-foreground">
+                      <span>候補</span>
+                      {searchHistory.length > 0 && (
+                        <button
+                          type="button"
+                          className="underline underline-offset-2 hover:text-foreground"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={clearSearchHistory}
+                        >
+                          履歴をクリア
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      {searchSuggestions.map((item) => (
+                        <button
+                          key={`${item.kind}-${item.value}`}
+                          type="button"
+                          className="rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => applySearchSuggestion(item.value)}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
