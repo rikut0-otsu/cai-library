@@ -1023,9 +1023,6 @@ export default function Home() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>プロフィール設定のお願い</DialogTitle>
-            <DialogDescription>
-              このまま入力して保存できます。下部からスキップも可能です。
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
