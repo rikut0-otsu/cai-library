@@ -55,6 +55,7 @@ type SharePayload = {
   id: number;
   title: string;
   authorName: string;
+  thumbnailUrl?: string;
 };
 
 const categories = [
@@ -142,7 +143,7 @@ export default function Home() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = sharePayload ? `${origin}/?caseId=${sharePayload.id}` : "";
   const shareMessage = sharePayload
-    ? `${sharePayload.authorName}さんが「${sharePayload.title}」をCAI LIBRARYに追加しました！あなたもログインしてチェックしよう！`
+    ? `${sharePayload.authorName}さんが、${sharePayload.title}を追加しました！チェックしよう！`
     : "";
   const shareText = sharePayload ? `${shareMessage}\n${shareUrl}` : "";
 
@@ -292,6 +293,7 @@ export default function Home() {
       id: found.id,
       title: found.title,
       authorName: found.authorName || "だれか",
+      thumbnailUrl: found.thumbnailUrl || undefined,
     };
   };
   const openCaseDetail = (caseId: number) => {
@@ -334,11 +336,31 @@ export default function Home() {
       return;
     }
     try {
-      await navigator.share({
+      const shareData: ShareData = {
         title: sharePayload.title,
         text: shareMessage,
         url: shareUrl,
-      });
+      };
+      if (sharePayload.thumbnailUrl) {
+        try {
+          const imageResponse = await fetch(sharePayload.thumbnailUrl);
+          if (imageResponse.ok) {
+            const imageBlob = await imageResponse.blob();
+            const imageFile = new File([imageBlob], "case-study-image.jpg", {
+              type: imageBlob.type || "image/jpeg",
+            });
+            if (
+              typeof navigator.canShare === "function" &&
+              navigator.canShare({ files: [imageFile] })
+            ) {
+              shareData.files = [imageFile];
+            }
+          }
+        } catch (imageError) {
+          console.error(imageError);
+        }
+      }
+      await navigator.share(shareData);
     } catch (error) {
       // User-cancelled share should be silent.
       if (error instanceof Error && error.name === "AbortError") return;
@@ -906,6 +928,13 @@ export default function Home() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-lg border bg-muted/30 p-3">
+              {sharePayload?.thumbnailUrl && (
+                <img
+                  src={sharePayload.thumbnailUrl}
+                  alt={sharePayload.title}
+                  className="mb-3 w-full max-h-52 object-cover rounded-md"
+                />
+              )}
               <p className="text-sm whitespace-pre-wrap break-words">{shareText}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
