@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,10 +92,24 @@ export default function Home() {
   const [celebrationPayload, setCelebrationPayload] = useState<SharePayload | null>(null);
   const [isProfilePromptOpen, setIsProfilePromptOpen] = useState(false);
   const [hasDismissedProfilePrompt, setHasDismissedProfilePrompt] = useState(false);
+  const [profilePromptName, setProfilePromptName] = useState("");
+  const [profilePromptDepartmentRole, setProfilePromptDepartmentRole] = useState("");
   const { theme, toggleTheme, switchable } = useTheme();
   const profilePromptQuery = trpc.profile.me.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchOnWindowFocus: false,
+  });
+  const updateProfilePromptMutation = trpc.profile.update.useMutation({
+    onSuccess: async () => {
+      toast.success("プロフィールを保存しました");
+      await Promise.all([
+        utils.profile.me.invalidate(),
+        utils.auth.me.invalidate(),
+        utils.caseStudies.list.invalidate(),
+      ]);
+      setIsProfilePromptOpen(false);
+      setHasDismissedProfilePrompt(true);
+    },
   });
   const toggleFavoriteMutation = trpc.caseStudies.toggleFavorite.useMutation({
     onSuccess: () => utils.caseStudies.list.invalidate(),
@@ -415,11 +430,36 @@ export default function Home() {
     if (hasDismissedProfilePrompt) return;
     if (!profilePromptQuery.data?.user) return;
 
+    setProfilePromptName(profilePromptQuery.data.user.name ?? "");
     const departmentRole = (profilePromptQuery.data.user.departmentRole ?? "").trim();
+    setProfilePromptDepartmentRole(departmentRole);
     if (!departmentRole) {
       setIsProfilePromptOpen(true);
     }
   }, [isAuthenticated, hasDismissedProfilePrompt, profilePromptQuery.data?.user]);
+
+  const handleSaveProfilePrompt = async () => {
+    const trimmedName = profilePromptName.trim();
+    const trimmedDepartmentRole = profilePromptDepartmentRole.trim();
+    if (!trimmedName) {
+      toast.error("名前を入力してください");
+      return;
+    }
+    if (!trimmedDepartmentRole) {
+      toast.error("部署・職種を入力してください");
+      return;
+    }
+    try {
+      await updateProfilePromptMutation.mutateAsync({
+        name: trimmedName,
+        departmentRole: trimmedDepartmentRole,
+        avatarUrl: profilePromptQuery.data?.user.avatarUrl ?? "",
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("プロフィールの保存に失敗しました");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -892,19 +932,36 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle>プロフィール設定のお願い</DialogTitle>
             <DialogDescription>
-              メンバーが事例を見つけやすくなるように、部署・職種の設定をお願いします。
+              このまま入力して保存できます。下部からスキップも可能です。
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="profile-prompt-name">名前</Label>
+              <Input
+                id="profile-prompt-name"
+                value={profilePromptName}
+                onChange={(e) => setProfilePromptName(e.target.value)}
+                placeholder="表示名を入力"
+                maxLength={80}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-prompt-department">部署・職種</Label>
+              <Input
+                id="profile-prompt-department"
+                value={profilePromptDepartmentRole}
+                onChange={(e) => setProfilePromptDepartmentRole(e.target.value)}
+                placeholder="例: 営業部 / マネージャー"
+                maxLength={120}
+              />
+            </div>
             <Button
               className="w-full"
-              onClick={() => {
-                setIsProfilePromptOpen(false);
-                setHasDismissedProfilePrompt(true);
-                setLocation("/profile");
-              }}
+              onClick={handleSaveProfilePrompt}
+              disabled={updateProfilePromptMutation.isPending}
             >
-              プロフィールを設定する
+              {updateProfilePromptMutation.isPending ? "保存中..." : "入力して設定する"}
             </Button>
             <button
               type="button"
